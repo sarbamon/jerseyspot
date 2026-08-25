@@ -7,30 +7,105 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
-import { getRazorpayKey, placeOrder, verifyPayment } from "@/lib/api";
+import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig } from "@/lib/api";
 
 export default function CheckoutPage() {
-  const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart } = useStore();
+  const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart, user } = useStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  
+  // Coupon State
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponSuccess, setCouponSuccess] = useState("");
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [shipping, setShipping] = useState({
     firstName: "", lastName: "", email: "", phoneNumber: "", streetAddress: "", city: "", postalCode: ""
   });
+  const [deliveryCharge, setDeliveryCharge] = useState(150);
 
   useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      showLoginModal();
+    getSiteConfig().then((data) => {
+      if (data && data.config && typeof data.config.deliveryCharge === "number") {
+        setDeliveryCharge(data.config.deliveryCharge);
+      }
+    }).catch(err => console.error("Failed to load delivery charge:", err));
+  }, []);
+
+  useEffect(() => {
+    if (isInitialized) {
+      if (!isAuthenticated) {
+        showLoginModal();
+      } else if (user) {
+        // Auto-fill user details and saved shipping address
+        const nameParts = user.name ? user.name.split(" ") : [""];
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        setShipping(prev => ({
+          ...prev,
+          firstName: user.shippingAddress?.firstName || firstName,
+          lastName: user.shippingAddress?.lastName || lastName,
+          email: user.shippingAddress?.email || user.email || "",
+          phoneNumber: user.shippingAddress?.phoneNumber || prev.phoneNumber,
+          streetAddress: user.shippingAddress?.streetAddress || prev.streetAddress,
+          city: user.shippingAddress?.city || prev.city,
+          postalCode: user.shippingAddress?.postalCode || prev.postalCode,
+        }));
+      }
     }
-  }, [isInitialized, isAuthenticated, showLoginModal]);
+  }, [isInitialized, isAuthenticated, showLoginModal, user]);
 
   const subtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
-  const shippingCost = subtotal > 0 ? 150 : 0; // Flat ₹150 shipping
-  const total = subtotal + shippingCost;
+  const shippingCost = subtotal > 0 ? deliveryCharge : 0;
+  
+  let discountAmount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === "percentage") {
+      discountAmount = (subtotal * appliedCoupon.discountValue) / 100;
+    } else if (appliedCoupon.discountType === "fixed") {
+      discountAmount = appliedCoupon.discountValue;
+    }
+    // Prevent negative total
+    if (discountAmount > subtotal) discountAmount = subtotal;
+  }
+  
+  const total = subtotal - discountAmount + shippingCost;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setShipping(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    setApplyingCoupon(true);
+    setCouponError("");
+    setCouponSuccess("");
+    try {
+      const data = await validateCoupon(couponCode);
+      if (data.success) {
+        setAppliedCoupon(data.coupon);
+        setCouponSuccess(`${data.coupon.code} applied!`);
+      } else {
+        setCouponError(data.message || "Invalid coupon");
+        setAppliedCoupon(null);
+      }
+    } catch (err: any) {
+      setCouponError(err.message || "Failed to apply coupon");
+      setAppliedCoupon(null);
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponSuccess("");
+    setCouponError("");
   };
 
   const handlePayment = async (e: React.FormEvent) => {
@@ -61,6 +136,8 @@ export default function CheckoutPage() {
         shippingAddress: shipping,
         itemsPrice: subtotal,
         shippingPrice: shippingCost,
+        discountAmount,
+        couponCode: appliedCoupon ? appliedCoupon.code : undefined,
         totalPrice: total
       });
 
@@ -218,11 +295,52 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* COUPON SECTION */}
+              <div className="mt-6 border-t border-gray-200 pt-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Gift Card or Discount Code</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    disabled={!!appliedCoupon}
+                    placeholder="Enter code"
+                    className="flex-1 border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                  />
+                  {appliedCoupon ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="bg-gray-200 px-6 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300"
+                    >
+                      REMOVE
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={applyingCoupon || !couponCode}
+                      className="bg-black px-6 py-3 text-sm font-bold text-[#f4c84a] transition-colors hover:bg-gray-900 disabled:opacity-50"
+                    >
+                      {applyingCoupon ? "..." : "APPLY"}
+                    </button>
+                  )}
+                </div>
+                {couponError && <p className="mt-2 text-xs font-bold text-red-500">{couponError}</p>}
+                {couponSuccess && <p className="mt-2 text-xs font-bold text-green-600">{couponSuccess}</p>}
+              </div>
+
               <div className="mt-6 space-y-3 border-t border-gray-200 pt-6 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal</span>
                   <span>₹{subtotal.toLocaleString("en-IN")}</span>
                 </div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-green-600 font-bold">
+                    <span>Discount ({appliedCoupon.code})</span>
+                    <span>-₹{discountAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
                   <span>₹{shippingCost.toLocaleString("en-IN")}</span>

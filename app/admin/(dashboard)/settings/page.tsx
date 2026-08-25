@@ -8,6 +8,7 @@ import Image from "next/image";
 export default function AdminSettingsPage() {
   const [config, setConfig] = useState({
     heroImage: "",
+    deliveryCharge: 150,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -119,6 +120,24 @@ export default function AdminSettingsPage() {
                   />
                 </label>
               </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold font-serif border-b pb-2">Checkout Settings</h2>
+            
+            <div>
+              <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">
+                Delivery Charge (₹)
+              </label>
+              <input
+                type="number"
+                name="deliveryCharge"
+                value={config.deliveryCharge}
+                onChange={handleChange}
+                min="0"
+                className="w-full max-w-lg rounded border border-gray-300 px-4 py-3 text-sm text-black focus:border-black focus:outline-none"
+              />
             </div>
           </div>
 

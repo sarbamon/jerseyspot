@@ -9,16 +9,22 @@ export async function getProducts(params = "", noCache = false) {
     ? { cache: "no-store" } 
     : { next: { revalidate: 60 } };
 
-  const response = await fetch(
-    `${API_URL}/products${params}`,
-    fetchOptions
-  );
+  try {
+    const response = await fetch(
+      `${API_URL}/products${params}`,
+      fetchOptions
+    );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch products");
+    if (!response.ok) {
+      console.warn("Failed to fetch products:", response.status);
+      return { products: [], pages: 1, page: 1, total: 0 };
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.warn("Error connecting to backend for getProducts:", error);
+    return { products: [], pages: 1, page: 1, total: 0 };
   }
-
-  return response.json();
 }
 
 export async function getProduct(slug: string, noCache = false) {
@@ -26,16 +32,22 @@ export async function getProduct(slug: string, noCache = false) {
     ? { cache: "no-store" } 
     : { next: { revalidate: 60 } };
 
-  const response = await fetch(
-    `${API_URL}/products/${slug}`,
-    fetchOptions
-  );
+  try {
+    const response = await fetch(
+      `${API_URL}/products/${slug}`,
+      fetchOptions
+    );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch product");
+    if (!response.ok) {
+      console.warn("Failed to fetch product:", slug, response.status);
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.warn("Error connecting to backend for getProduct:", slug, error);
+    return null;
   }
-
-  return response.json();
 }
 
 export async function createProduct(productData: any) {
@@ -70,6 +82,23 @@ export async function loginUser(credentials: any) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to login");
+  }
+
+  return response.json();
+}
+
+export async function googleLoginUser(idToken: string) {
+  const response = await fetch(`${API_URL}/auth/google`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ idToken }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to login with Google");
   }
 
   return response.json();
@@ -252,13 +281,20 @@ export async function getOrders(noCache = false) {
 
 export async function getSiteConfig(noCache = false) {
   const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
-  const response = await fetch(`${API_URL}/config/site`, fetchOptions);
   
-  if (!response.ok) {
-    throw new Error("Failed to fetch site config");
-  }
+  try {
+    const response = await fetch(`${API_URL}/config/site`, fetchOptions);
+    
+    if (!response.ok) {
+      console.warn("Failed to fetch site config:", response.status);
+      return { config: { deliveryCharge: 150 } };
+    }
 
-  return response.json();
+    return await response.json();
+  } catch (error) {
+    console.warn("Error connecting to backend for getSiteConfig:", error);
+    return { config: { deliveryCharge: 150 } };
+  }
 }
 
 export async function updateSiteConfig(configData: any) {
@@ -319,5 +355,72 @@ export async function updateDeliveryStatus(orderId: string, status: string) {
     throw new Error(errorData.message || "Failed to update delivery status");
   }
 
+  return response.json();
+}
+
+// ==========================================
+// COUPON API
+// ==========================================
+
+export async function getCoupons() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+  const response = await fetch(`${API_URL}/coupons`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch coupons");
+  }
+  return response.json();
+}
+
+export async function createCoupon(couponData: {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  usageLimit?: number;
+}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+  const response = await fetch(`${API_URL}/coupons`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(couponData),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to create coupon");
+  }
+  return response.json();
+}
+
+export async function deleteCoupon(id: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+  const response = await fetch(`${API_URL}/coupons/${id}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete coupon");
+  }
+  return response.json();
+}
+
+export async function validateCoupon(code: string) {
+  const response = await fetch(`${API_URL}/coupons/validate/${code}`, {
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Invalid coupon code");
+  }
   return response.json();
 }
