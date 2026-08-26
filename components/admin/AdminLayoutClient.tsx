@@ -44,7 +44,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
         />
       )}
       
-      <div className="flex flex-1 flex-col lg:ml-64 w-full">
+      <div className="flex flex-1 flex-col lg:ml-64 min-w-0 w-full">
         <Topbar onMenuClick={() => setIsMobileMenuOpen(true)} onLogout={handleLogout} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-8">
           {children}

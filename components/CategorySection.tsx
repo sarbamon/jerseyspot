@@ -1,6 +1,7 @@
 import Image from "next/image";
+import { getSiteConfig } from "@/lib/api";
 
-const categories = [
+const defaultCategories = [
   {
     name: "Player Version",
     href: "/shop?category=player-version",
@@ -33,7 +34,17 @@ const categories = [
   },
 ];
 
-export default function CategorySection() {
+export default async function CategorySection() {
+  let categories = defaultCategories;
+  try {
+    const configData = await getSiteConfig(true);
+    if (configData.config && configData.config.categories && configData.config.categories.length > 0) {
+      categories = configData.config.categories;
+    }
+  } catch (error) {
+    console.error("Failed to load dynamic categories:", error);
+  }
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <div className="mb-10">
@@ -46,22 +57,22 @@ export default function CategorySection() {
         </h2>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] after:w-4 after:shrink-0 after:content-['']">
         {categories.map((category) => (
           <a
             key={category.name}
             href={category.href}
-            className="group relative flex aspect-[4/3] items-end overflow-hidden bg-gray-900 p-6 text-white"
+            className="group relative flex h-32 w-56 sm:h-40 sm:w-64 shrink-0 snap-start items-center justify-center overflow-hidden bg-black p-4 text-white rounded-md shadow-md"
           >
             <Image
               src={category.image}
               alt={category.name}
               fill
-              sizes="(max-width: 768px) 100vw, 33vw"
-              className="object-cover opacity-60 transition duration-500 group-hover:scale-105 group-hover:opacity-90"
+              sizes="(max-width: 768px) 250px, 300px"
+              className="object-cover opacity-40 transition duration-500 group-hover:scale-105 group-hover:opacity-60"
             />
-            <div className="relative z-10">
-              <h3 className="text-2xl font-bold tracking-wider">
+            <div className="relative z-10 text-center">
+              <h3 className="text-lg sm:text-xl font-bold tracking-wider drop-shadow-xl text-white">
                 {category.name}
               </h3>
             </div>

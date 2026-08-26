@@ -16,11 +16,7 @@ export default function CartPage() {
     showLoginModal,
   } = useStore();
 
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      showLoginModal();
-    }
-  }, [isInitialized, isAuthenticated, showLoginModal]);
+  // No forced login on cart page; users can view cart as guests.
 
   const subtotal = cart.reduce(
     (total, item) =>

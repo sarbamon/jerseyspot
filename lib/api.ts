@@ -121,6 +121,23 @@ export async function registerUser(credentials: any) {
   return response.json();
 }
 
+export async function getUsers() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+  const response = await fetch(`${API_URL}/auth/users`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch users");
+  }
+
+  return response.json();
+}
+
 export async function updateProduct(id: string, productData: any) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
 

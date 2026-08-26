@@ -22,7 +22,7 @@ export default function CheckoutPage() {
   const [couponSuccess, setCouponSuccess] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [shipping, setShipping] = useState({
-    firstName: "", lastName: "", email: "", phoneNumber: "", streetAddress: "", city: "", postalCode: ""
+    firstName: "", lastName: "", email: "", phoneNumber: "", streetAddress: "", city: "", state: "", postalCode: ""
   });
   const [deliveryCharge, setDeliveryCharge] = useState(150);
 
@@ -52,11 +52,34 @@ export default function CheckoutPage() {
           phoneNumber: user.shippingAddress?.phoneNumber || prev.phoneNumber,
           streetAddress: user.shippingAddress?.streetAddress || prev.streetAddress,
           city: user.shippingAddress?.city || prev.city,
+          state: user.shippingAddress?.state || prev.state || "",
           postalCode: user.shippingAddress?.postalCode || prev.postalCode,
         }));
       }
     }
   }, [isInitialized, isAuthenticated, showLoginModal, user]);
+
+  useEffect(() => {
+    async function fetchPincodeDetails() {
+      if (shipping.postalCode && shipping.postalCode.length === 6 && /^\d+$/.test(shipping.postalCode)) {
+        try {
+          const res = await fetch(`https://api.postalpincode.in/pincode/${shipping.postalCode}`);
+          const data = await res.json();
+          if (data && data[0] && data[0].Status === "Success" && data[0].PostOffice && data[0].PostOffice.length > 0) {
+            const postOffice = data[0].PostOffice[0];
+            setShipping(prev => ({
+              ...prev,
+              city: postOffice.District,
+              state: postOffice.State
+            }));
+          }
+        } catch (err) {
+          console.error("Failed to fetch pincode details", err);
+        }
+      }
+    }
+    fetchPincodeDetails();
+  }, [shipping.postalCode]);
 
   const subtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
   const shippingCost = subtotal > 0 ? deliveryCharge : 0;
@@ -262,14 +285,21 @@ export default function CheckoutPage() {
                 <input type="text" name="streetAddress" value={shipping.streetAddress} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-3">
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">City</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Pincode</label>
+                  <input type="text" name="postalCode" value={shipping.postalCode} onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setShipping(prev => ({ ...prev, postalCode: val }));
+                  }} maxLength={6} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">City / District</label>
                   <input type="text" name="city" value={shipping.city} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Postal Code</label>
-                  <input type="text" name="postalCode" value={shipping.postalCode} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">State</label>
+                  <input type="text" name="state" value={shipping.state} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
                 </div>
               </div>
             </form>

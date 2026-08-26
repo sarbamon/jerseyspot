@@ -144,7 +144,7 @@ export default function AdminCouponsPage() {
         </div>
       )}
 
-      <div className="overflow-hidden border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 uppercase text-gray-500">
             <tr>

@@ -15,7 +15,7 @@ type Product = {
   images?: string[];
   team: string;
   season?: string;
-  sizes: string[];
+  sizes: { size: string; stock: number }[];
   stock: number;
   rating?: number;
   reviewsCount?: number;

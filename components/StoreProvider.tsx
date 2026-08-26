@@ -16,7 +16,7 @@ export type StoreProduct = {
   originalPrice?: number;
   image: string;
   team: string;
-  sizes: string[];
+  sizes: { size: string; stock: number }[];
 };
 
 export type CartItem = StoreProduct & {

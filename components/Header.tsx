@@ -13,6 +13,7 @@ import { useState } from "react";
 import { useStore } from "@/components/StoreProvider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Header() {
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -162,7 +163,7 @@ export default function Header() {
               {moreOpen && (
                 <div className="absolute left-0 top-full mt-6 w-48 border border-[#292929] bg-black py-2 shadow-xl">
                   <a href="/orders" className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]">MY ORDERS</a>
-                  <a href="/terms" className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]">TERMS</a>
+                  <a href="/terms" className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]">TERMS AND CONDITIONS</a>
                   <a href="/contact" className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]">CONTACT US</a>
                 </div>
               )}
@@ -175,17 +176,14 @@ export default function Header() {
             aria-label="Jersey Spot Home"
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
           >
-            <div className="flex h-[58px] w-[88px] items-center justify-center border border-[#252525] bg-black sm:h-[62px] sm:w-[98px]">
-              <div className="text-center">
-                <div className="font-serif text-[28px] font-black leading-none text-[#f4c84a] sm:text-[30px]">
-                  JS
-                </div>
-
-                <div className="mt-1 whitespace-nowrap font-serif text-[9px] tracking-[0.04em] text-[#f4c84a] sm:text-[11px]">
-                  JERSEY SPOT
-                </div>
-              </div>
-            </div>
+            <Image
+              src="/images/logo.jpg"
+              alt="Jersey Spot"
+              width={110}
+              height={60}
+              className="h-auto w-[88px] sm:w-[98px]"
+              priority
+            />
           </Link>
 
           {/* ================= RIGHT ICONS ================= */}
@@ -224,10 +222,10 @@ export default function Header() {
 
             {/* ACCOUNT */}
             <Link
-              href="/orders"
+              href="/account"
               onClick={handleAccountClick}
               aria-label="Account"
-              className="hidden transition-opacity hover:opacity-70 sm:block"
+              className="transition-opacity hover:opacity-70"
             >
               <UserRound size={21} strokeWidth={1.4} />
             </Link>
@@ -384,23 +382,16 @@ export default function Header() {
                 CONTACT US
               </a>
 
-              {/* MY ORDERS */}
+              {/* MY ACCOUNT */}
               <a
-                href="/orders"
+                href="/account"
                 onClick={closeMenu}
                 className="block border-b border-[#242424] px-2 py-4 font-serif text-sm font-bold"
               >
-                MY ORDERS
+                MY ACCOUNT
               </a>
 
-              {/* INSTALL APP */}
-              <a
-                href="/install"
-                onClick={closeMenu}
-                className="block px-2 py-4 font-serif text-sm font-bold"
-              >
-                INSTALL APP
-              </a>
+
 
             </nav>
           </div>

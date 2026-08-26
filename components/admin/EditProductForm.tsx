@@ -11,20 +11,40 @@ export default function EditProductForm({ product }: { product: any }) {
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
+    const initialSizes = { S: 0, M: 0, L: 0, XL: 0, XXL: 0 };
+    if (product.sizes) {
+      product.sizes.forEach((s: any) => {
+        if (typeof s === 'object') {
+          if (s.size in initialSizes) (initialSizes as any)[s.size] = s.stock;
+        } else {
+          if (s in initialSizes) (initialSizes as any)[s] = 10;
+        }
+      });
+    }
+
   const [formData, setFormData] = useState({
     name: product.name || "",
     team: product.team || "",
     category: product.category || "player-version",
     price: product.price || "",
     originalPrice: product.originalPrice || "",
-    stock: product.stock !== undefined ? product.stock : 10,
-    sizes: product.sizes ? product.sizes.join(", ") : "S, M, L, XL, XXL",
-    images: product.images && product.images.length > 0 ? product.images.join(", ") : (product.image || "/images/products/placeholder.jpg"),
+    sizes: initialSizes,
+    images: product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : ["/images/products/placeholder.jpg"]),
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (["S", "M", "L", "XL", "XXL"].includes(name)) {
+      setFormData(prev => ({
+        ...prev,
+        sizes: {
+          ...prev.sizes,
+          [name]: parseInt(value, 10) || 0
+        }
+      }));
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,13 +52,17 @@ export default function EditProductForm({ product }: { product: any }) {
     setUploading(true);
     try {
       const data = await uploadImages(e.target.files);
-      const newUrls = data.urls.join(", ");
-      setFormData(prev => ({
-        ...prev,
-        images: prev.images === "/images/products/placeholder.jpg" || !prev.images 
-          ? newUrls 
-          : `${prev.images}, ${newUrls}`
-      }));
+      
+      setFormData(prev => {
+        const currentImages = prev.images.length === 1 && prev.images[0] === "/images/products/placeholder.jpg" 
+          ? [] 
+          : prev.images;
+          
+        return {
+          ...prev,
+          images: [...currentImages, ...data.urls]
+        };
+      });
       
       const origSize = (data.originalSize / 1024).toFixed(1);
       const compSize = (data.compressedSize / 1024).toFixed(1);
@@ -53,7 +77,7 @@ export default function EditProductForm({ product }: { product: any }) {
     }
   };
 
-  const currentImages = formData.images ? formData.images.split(",").map((i: any) => i.trim()).filter(Boolean) : [];
+  const currentImages = formData.images || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +86,13 @@ export default function EditProductForm({ product }: { product: any }) {
     try {
       const slug = formData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
       
+      const parsedSizes = Object.entries(formData.sizes).map(([size, stock]) => ({
+        size,
+        stock: Number(stock)
+      }));
+
+      const computedStock = parsedSizes.reduce((sum: number, item: any) => sum + item.stock, 0);
+
       const productPayload = {
         name: formData.name,
         slug: slug,
@@ -69,10 +100,10 @@ export default function EditProductForm({ product }: { product: any }) {
         category: formData.category,
         price: Number(formData.price),
         originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
-        stock: Number(formData.stock),
-        sizes: formData.sizes.split(",").map((s: any) => s.trim()),
-        images: formData.images.split(",").map((i: any) => i.trim()).filter(Boolean),
-        image: formData.images.split(",").map((i: any) => i.trim()).filter(Boolean)[0] || "/images/products/placeholder.jpg",
+        stock: computedStock,
+        sizes: parsedSizes,
+        images: formData.images,
+        image: formData.images[0] || "/images/products/placeholder.jpg",
       };
 
       await updateProduct(product._id, productPayload);
@@ -140,14 +171,18 @@ export default function EditProductForm({ product }: { product: any }) {
             </div>
             
             <div className="sm:col-span-2">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Stock Quantity</label>
-              <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full rounded border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Stock per Size</label>
+              <div className="grid grid-cols-5 gap-4">
+                {["S", "M", "L", "XL", "XXL"].map((sz) => (
+                  <div key={sz}>
+                    <label className="block text-[10px] font-bold text-gray-500 mb-1">{sz}</label>
+                    <input type="number" name={sz} value={(formData.sizes as any)[sz]} onChange={handleChange} min={0} className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none" required />
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="sm:col-span-2">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Sizes (Comma separated)</label>
-              <input type="text" name="sizes" value={formData.sizes} onChange={handleChange} className="w-full rounded border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" />
-            </div>
+
 
             <div className="sm:col-span-2">
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Product Images</label>
@@ -159,7 +194,7 @@ export default function EditProductForm({ product }: { product: any }) {
                     <img src={img} alt={`Product ${idx}`} className="h-full w-full object-cover" />
                     <button 
                       type="button" 
-                      onClick={() => setFormData(prev => ({ ...prev, images: currentImages.filter((_: any, i: any) => i !== idx).join(", ") }))}
+                      onClick={() => setFormData(prev => ({ ...prev, images: prev.images.filter((_: any, i: any) => i !== idx) }))}
                       className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:bg-red-600"
                     >
                       ×

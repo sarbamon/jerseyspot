@@ -10,7 +10,7 @@ export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { isInitialized, isAuthenticated, logout, showLoginModal } = useStore();
+  const { isInitialized, isAuthenticated, logout, showLoginModal, user } = useStore();
 
   useEffect(() => {
     if (isInitialized && !isAuthenticated) {
@@ -65,7 +65,7 @@ export default function MyOrdersPage() {
       <div className="mx-auto max-w-5xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h1 className="font-serif text-3xl font-black tracking-widest text-black">
-            MY ORDERS
+            MY ORDERS {user ? `- ${user.name}` : ""}
           </h1>
           <button
             onClick={() => logout()}
@@ -156,10 +156,10 @@ export default function MyOrdersPage() {
                     {order.orderItems.map((item: any, index: number) => (
                       <div key={index} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-black">{item.qty}x</span>
+                          <span className="font-bold text-black">{item.quantity}x</span>
                           <span className="text-gray-700">{item.name}</span>
                         </div>
-                        <div className="font-bold">₹{(item.price * item.qty).toLocaleString("en-IN")}</div>
+                        <div className="font-bold">₹{(item.price * item.quantity).toLocaleString("en-IN")}</div>
                       </div>
                     ))}
                   </div>

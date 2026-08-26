@@ -9,6 +9,7 @@ export default function AdminSettingsPage() {
   const [config, setConfig] = useState({
     heroImage: "",
     deliveryCharge: 150,
+    categories: [] as { name: string; href: string; image: string }[],
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -36,14 +37,25 @@ export default function AdminSettingsPage() {
     setConfig((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "hero" | number) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
     setUploading(true);
     try {
       const data = await uploadImages(e.target.files);
       if (data.urls && data.urls.length > 0) {
-        setConfig((prev) => ({ ...prev, heroImage: data.urls[0] }));
+        if (type === "hero") {
+          setConfig((prev) => ({ ...prev, heroImage: data.urls[0] }));
+        } else {
+          // type is the category index
+          setConfig((prev) => {
+            const newCategories = [...(prev.categories || [])];
+            if (newCategories[type]) {
+              newCategories[type] = { ...newCategories[type], image: data.urls[0] };
+            }
+            return { ...prev, categories: newCategories };
+          });
+        }
       }
     } catch (error) {
       console.error("Image upload failed:", error);
@@ -115,11 +127,57 @@ export default function AdminSettingsPage() {
                     type="file" 
                     className="hidden" 
                     accept="image/*" 
-                    onChange={handleImageUpload} 
+                    onChange={(e) => handleImageUpload(e, "hero")} 
                     disabled={uploading} 
                   />
                 </label>
               </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold font-serif border-b pb-2">Homepage Categories</h2>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {config.categories && config.categories.map((cat, index) => (
+                <div key={index} className="border border-gray-200 p-4 rounded-lg">
+                  <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">
+                    {cat.name} Image
+                  </label>
+                  
+                  {cat.image ? (
+                    <div className="relative mb-4 h-32 w-full overflow-hidden rounded border border-gray-200">
+                      <Image src={cat.image} alt={cat.name} fill className="object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newCat = [...config.categories];
+                          newCat[index].image = "";
+                          setConfig(prev => ({ ...prev, categories: newCat }));
+                        }}
+                        className="absolute right-2 top-2 rounded-full bg-white p-1 text-red-500 shadow hover:bg-gray-100"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
+                      <div className="flex flex-col items-center justify-center pb-6 pt-5">
+                        <UploadCloud className="mb-2 text-gray-500" size={24} />
+                        <p className="text-xs text-gray-500 text-center px-2">
+                          {uploading ? "Uploading..." : "Upload image"}
+                        </p>
+                      </div>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={(e) => handleImageUpload(e, index)} 
+                        disabled={uploading} 
+                      />
+                    </label>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
