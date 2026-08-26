@@ -15,6 +15,12 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   
+  useEffect(() => {
+    if (success) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [success]);
+
   // Coupon State
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
@@ -226,9 +232,14 @@ export default function CheckoutPage() {
         <p className="mb-8 text-center text-gray-500">
           Thank you for your purchase. Your jerseys will be on their way soon!
         </p>
-        <Link href="/shop" className="bg-black px-8 py-4 text-sm font-bold tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-900">
-          CONTINUE SHOPPING
-        </Link>
+        <div className="flex flex-col gap-4 w-full max-w-xs">
+          <Link href="/shop" className="bg-black px-8 py-4 text-center text-sm font-bold tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-900 w-full">
+            CONTINUE SHOPPING
+          </Link>
+          <Link href="/orders" className="border border-gray-300 bg-white px-8 py-4 text-center text-sm font-bold tracking-wider text-black transition-colors hover:bg-gray-50 w-full">
+            VIEW MY ORDERS
+          </Link>
+        </div>
       </main>
     );
   }

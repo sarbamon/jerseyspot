@@ -10,6 +10,7 @@ export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("active"); // "active" or "history"
   const { isInitialized, isAuthenticated, logout, showLoginModal, user } = useStore();
 
   useEffect(() => {
@@ -60,33 +61,53 @@ export default function MyOrdersPage() {
     );
   }
 
+  const filteredOrders = orders.filter((order: any) => {
+    const isDelivered = order.deliveryStatus === "Delivered" || order.isDelivered;
+    if (activeTab === "active" && isDelivered) return false;
+    if (activeTab === "history" && !isDelivered) return false;
+    return true;
+  });
+
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12 text-black sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="font-serif text-3xl font-black tracking-widest text-black">
             MY ORDERS {user ? `- ${user.name}` : ""}
           </h1>
+        </div>
+
+        <div className="mb-6 flex border-b border-gray-200">
           <button
-            onClick={() => logout()}
-            className="mt-4 sm:mt-0 text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-black"
+            onClick={() => setActiveTab("active")}
+            className={`px-6 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${
+              activeTab === "active" ? "border-b-2 border-black text-black" : "text-gray-400 hover:text-black"
+            }`}
           >
-            Sign Out
+            Active Orders
+          </button>
+          <button
+            onClick={() => setActiveTab("history")}
+            className={`px-6 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${
+              activeTab === "history" ? "border-b-2 border-black text-black" : "text-gray-400 hover:text-black"
+            }`}
+          >
+            History
           </button>
         </div>
 
-        {orders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
             <Package size={48} className="mb-4 text-gray-400" />
-            <h2 className="mb-2 text-xl font-bold">No orders found</h2>
-            <p className="mb-6 text-gray-500">You haven't placed any orders yet.</p>
+            <h2 className="mb-2 text-xl font-bold">No {activeTab} orders found</h2>
+            <p className="mb-6 text-gray-500">You don't have any {activeTab} orders at the moment.</p>
             <Link href="/shop" className="bg-black px-8 py-3 font-bold uppercase tracking-wider text-[#f4c84a] transition hover:bg-gray-800">
               START SHOPPING
             </Link>
           </div>
         ) : (
           <div className="space-y-6">
-            {orders.map((order: any) => (
+            {filteredOrders.map((order: any) => (
               <div key={order._id} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="mb-4 flex flex-col justify-between border-b border-gray-100 pb-4 sm:flex-row sm:items-center">
                   <div>
@@ -147,6 +168,20 @@ export default function MyOrdersPage() {
                       {order.shippingAddress?.firstName} {order.shippingAddress?.lastName}
                     </p>
                   </div>
+
+                  {/* Tracking */}
+                  {order.trackingNumber && (
+                    <div className="sm:col-span-2 lg:col-span-4 mt-2 rounded bg-gray-50 p-3 border border-gray-100 flex items-center justify-between">
+                      <div>
+                        <p className="mb-1 text-xs font-bold text-gray-500">TRACKING NUMBER</p>
+                        <p className="text-sm font-mono font-bold text-black">{order.trackingNumber}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="mb-1 text-xs font-bold text-gray-500">COURIER</p>
+                        <p className="text-sm font-bold text-black">{order.courierName || "Standard Courier"}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Items */}

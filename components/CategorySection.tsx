@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { getSiteConfig } from "@/lib/api";
+import { getSiteConfig, getProducts } from "@/lib/api";
 
 const defaultCategories = [
   {
@@ -36,13 +36,37 @@ const defaultCategories = [
 
 export default async function CategorySection() {
   let categories = defaultCategories;
+  let activeCategories = new Set<string>();
+
   try {
     const configData = await getSiteConfig(true);
     if (configData.config && configData.config.categories && configData.config.categories.length > 0) {
       categories = configData.config.categories;
     }
+
+    // Fetch products to check category availability
+    const productsData = await getProducts("?limit=1000", true); // Fetch max possible to check existence
+    if (productsData && productsData.products) {
+      productsData.products.forEach((p: any) => {
+        if (p.category) {
+          // Normalize the DB category (e.g. "player-version" -> "player version")
+          activeCategories.add(p.category.replace(/-/g, ' ').toLowerCase());
+        }
+      });
+    }
   } catch (error) {
-    console.error("Failed to load dynamic categories:", error);
+    console.error("Failed to load dynamic categories or products:", error);
+  }
+
+  // Filter categories to only show ones that have products
+  const availableCategories = categories.filter(cat => 
+    activeCategories.has(cat.name.toLowerCase().replace(/-/g, ' '))
+  );
+
+  // If no products exist, maybe fallback to all or just show empty (user requested: "if no products dont show here")
+  // So we only render the filtered ones. If empty, maybe don't render the section?
+  if (availableCategories.length === 0) {
+    return null;
   }
 
   return (
@@ -57,18 +81,19 @@ export default async function CategorySection() {
         </h2>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] after:w-4 after:shrink-0 after:content-['']">
-        {categories.map((category) => (
+      {/* Changed to flex-wrap for desktop so it doesn't get cut off, but remains scrollable on mobile if needed, though wrap is usually better for both if items are small. */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {availableCategories.map((category) => (
           <a
             key={category.name}
             href={category.href}
-            className="group relative flex h-32 w-56 sm:h-40 sm:w-64 shrink-0 snap-start items-center justify-center overflow-hidden bg-black p-4 text-white rounded-md shadow-md"
+            className="group relative flex h-32 sm:h-40 w-full items-center justify-center overflow-hidden bg-black p-4 text-white rounded-md shadow-md"
           >
             <Image
               src={category.image}
               alt={category.name}
               fill
-              sizes="(max-width: 768px) 250px, 300px"
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
               className="object-cover opacity-40 transition duration-500 group-hover:scale-105 group-hover:opacity-60"
             />
             <div className="relative z-10 text-center">

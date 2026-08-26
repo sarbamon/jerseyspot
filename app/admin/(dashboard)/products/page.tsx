@@ -64,52 +64,60 @@ export default async function AdminProductsPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {products.map((product: any) => (
-                <tr key={product._id} className="transition-colors hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-gray-100">
-                        <Image src={product.image} alt={product.name} fill sizes="48px" className="object-cover" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-black">{product.name}</div>
-                        <div className="text-xs text-gray-500">{product.team}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 uppercase tracking-wider text-xs font-bold">
-                    {product.category.replace("-", " ")}
-                  </td>
-                  <td className="px-6 py-4 font-bold text-black">
-                    ₹{product.price.toLocaleString("en-IN")}
-                  </td>
-                  <td className="px-6 py-4">
-                    {isDeletedTab ? (
-                      <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-red-800">
-                        Deleted
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-green-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-green-800">
-                        In Stock
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      {isDeletedTab ? (
-                        <RestoreProductButton productId={product._id} />
-                      ) : (
-                        <>
-                          <Link href={`/admin/products/${product.slug}/edit`} className="text-gray-400 hover:text-black">
-                            <Edit size={18} />
-                          </Link>
-                          <DeleteProductButton productId={product._id} />
-                        </>
-                      )}
-                    </div>
+              {products.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    No products found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                products.map((product: any) => (
+                  <tr key={product._id} className="transition-colors hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-gray-100">
+                          <Image src={product.image || "/placeholder.png"} alt={product.name} fill sizes="48px" className="object-cover" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-black">{product.name}</div>
+                          <div className="text-xs text-gray-500">{product.team}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 uppercase tracking-wider text-xs font-bold">
+                      {product.category ? product.category.replace("-", " ") : "N/A"}
+                    </td>
+                    <td className="px-6 py-4 font-bold text-black">
+                      ₹{product.price.toLocaleString("en-IN")}
+                    </td>
+                    <td className="px-6 py-4">
+                      {isDeletedTab ? (
+                        <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-red-800">
+                          Deleted
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-green-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-green-800">
+                          In Stock
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        {isDeletedTab ? (
+                          <RestoreProductButton productId={product._id} />
+                        ) : (
+                          <>
+                            <Link href={`/admin/products/${product.slug}/edit`} className="text-gray-400 hover:text-black">
+                              <Edit size={18} />
+                            </Link>
+                            <DeleteProductButton productId={product._id} />
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

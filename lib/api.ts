@@ -356,7 +356,10 @@ export async function getMyOrders(noCache = false) {
 }
 
 export async function updateDeliveryStatus(orderId: string, status: string) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem("jerseyspot-admin-token") : null;
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
+  }
   
   const response = await fetch(`${API_URL}/orders/${orderId}/deliverystatus`, {
     method: "PUT",
@@ -370,6 +373,48 @@ export async function updateDeliveryStatus(orderId: string, status: string) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to update delivery status");
+  }
+
+  return response.json();
+}
+
+export async function deleteOrder(id: string) {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
+  }
+
+  const response = await fetch(`${API_URL}/orders/${id}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete order");
+  }
+
+  return response.json();
+}
+
+export async function bookShipment(id: string) {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
+  }
+
+  const response = await fetch(`${API_URL}/orders/${id}/book-shipment`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to book shipment");
   }
 
   return response.json();

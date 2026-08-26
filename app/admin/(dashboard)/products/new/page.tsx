@@ -19,10 +19,13 @@ export default function NewProductPage() {
     originalPrice: "",
     sizes: { S: 10, M: 10, L: 10, XL: 10, XXL: 10 },
     images: ["/images/products/placeholder.jpg"],
+    featured: false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type, checked } = target;
+    
     if (["S", "M", "L", "XL", "XXL"].includes(name)) {
       setFormData(prev => ({
         ...prev,
@@ -31,6 +34,8 @@ export default function NewProductPage() {
           [name]: parseInt(value, 10) || 0
         }
       }));
+    } else if (type === "checkbox") {
+      setFormData({ ...formData, [name]: checked });
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -93,6 +98,7 @@ export default function NewProductPage() {
         sizes: parsedSizes,
         images: formData.images,
         image: formData.images[0] || "/images/products/placeholder.jpg",
+        featured: formData.featured,
       };
 
       await createProduct(productPayload);
@@ -140,6 +146,19 @@ export default function NewProductPage() {
                 <option value="retro">retro</option>
                 <option value="clearance">clearance</option>
               </select>
+            </div>
+            
+            <div className="sm:col-span-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                <input
+                  type="checkbox"
+                  name="featured"
+                  checked={formData.featured}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                />
+                Feature this product on the homepage
+              </label>
             </div>
           </div>
         </div>

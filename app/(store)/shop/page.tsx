@@ -25,7 +25,7 @@ export default async function ShopPage({
 
   let products = [];
   try {
-    const data = await getProducts(queryStr);
+    const data = await getProducts(queryStr, true);
     products = data.products || [];
   } catch (error) {
     console.error("Shop fetch error:", error);
@@ -40,13 +40,15 @@ export default async function ShopPage({
     { label: "Clearance", value: "clearance" },
   ];
 
+  const selectedCategoryLabel = categories.find(c => c.value === category)?.label || "All Jerseys";
+
   return (
     <main className="min-h-screen bg-white px-5 py-8 text-black sm:px-8 lg:px-12 lg:py-12">
       <div className="mx-auto max-w-[1420px]">
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end lg:mb-8">
           <div>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">Catalog</p>
-            <h1 className="font-serif text-4xl font-black uppercase tracking-wider lg:text-5xl">All Jerseys</h1>
+            <h1 className="font-serif text-4xl font-black uppercase tracking-wider lg:text-5xl">{selectedCategoryLabel}</h1>
           </div>
         </div>
 

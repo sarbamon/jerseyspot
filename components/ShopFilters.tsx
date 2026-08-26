@@ -31,7 +31,7 @@ export default function ShopFilters({
   return (
     <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:flex lg:flex-wrap">
       {/* CATEGORY DROPDOWN */}
-      <div className="w-full lg:w-48">
+      <div className="w-full lg:w-64">
         <label htmlFor="category-select" className="mb-2 block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
           Category
         </label>
