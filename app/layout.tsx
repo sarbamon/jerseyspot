@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Jersey Spot | Premium Quality Football Jerseys",
     description: "Your premium destination for the finest imported football jerseys. Authentic designs, perfect fit, and all-day comfort for true fans.",
-    url: "https://jerseyspot.com",
+    url: "https://jerseyspot.online",
     siteName: "Jersey Spot",
     locale: "en_IN",
     type: "website",

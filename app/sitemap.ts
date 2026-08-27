@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://jerseyspot.com';
+  const baseUrl = 'https://jerseyspot.online';
 
   // In a real application, you would fetch all your product slugs here
   // and map them to sitemap entries.

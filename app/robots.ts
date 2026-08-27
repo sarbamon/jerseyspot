@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/account/', '/orders/'],
     },
-    sitemap: 'https://jerseyspot.com/sitemap.xml',
+    sitemap: 'https://jerseyspot.online/sitemap.xml',
   };
 }
