@@ -25,7 +25,7 @@ export default async function ShopPage({
 
   let products = [];
   try {
-    const data = await getProducts(queryStr, true);
+    const data = await getProducts(queryStr);
     products = data.products || [];
   } catch (error) {
     console.error("Shop fetch error:", error);

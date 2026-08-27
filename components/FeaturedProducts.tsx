@@ -17,7 +17,7 @@ type Product = {
 export default async function FeaturedProducts() {
   // Fetch products without any filters to just get the most recently added ones
   // We'll limit it to 4 or 8 items here since it's just for the homepage section
-  const data = await getProducts("", true);
+  const data = await getProducts("");
 
   const products: Product[] = data.products.slice(0, 8); // Limit to top 8 recent products
 

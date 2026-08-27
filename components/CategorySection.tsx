@@ -45,7 +45,7 @@ export default async function CategorySection() {
     }
 
     // Fetch products to check category availability
-    const productsData = await getProducts("?limit=1000", true); // Fetch max possible to check existence
+    const productsData = await getProducts("?limit=1000"); // Fetch max possible to check existence
     if (productsData && productsData.products) {
       productsData.products.forEach((p: any) => {
         if (p.category) {
