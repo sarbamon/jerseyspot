@@ -15,6 +15,7 @@ export default function AdminCouponsPage() {
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [discountValue, setDiscountValue] = useState("");
   const [usageLimit, setUsageLimit] = useState("");
+  const [isOneTimePerUser, setIsOneTimePerUser] = useState(false);
 
   useEffect(() => {
     fetchCoupons();
@@ -43,6 +44,7 @@ export default function AdminCouponsPage() {
         discountType,
         discountValue: Number(discountValue),
         usageLimit: usageLimit ? Number(usageLimit) : undefined,
+        isOneTimePerUser,
       });
 
       if (data.success) {
@@ -51,6 +53,7 @@ export default function AdminCouponsPage() {
         setCode("");
         setDiscountValue("");
         setUsageLimit("");
+        setIsOneTimePerUser(false);
       } else {
         alert(data.message);
       }
@@ -132,6 +135,18 @@ export default function AdminCouponsPage() {
                 className="w-full border p-2 text-sm focus:border-black focus:outline-none"
               />
             </div>
+            <div className="flex items-center gap-2 mt-6">
+              <input
+                type="checkbox"
+                id="oneTime"
+                checked={isOneTimePerUser}
+                onChange={(e) => setIsOneTimePerUser(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+              />
+              <label htmlFor="oneTime" className="text-xs font-bold text-gray-600 uppercase tracking-wide cursor-pointer">
+                1 TIME USE PER USER
+              </label>
+            </div>
             <div className="md:col-span-2 lg:col-span-4 mt-2">
               <button
                 type="submit"
@@ -167,7 +182,10 @@ export default function AdminCouponsPage() {
                   {coupon.discountType === "percentage" ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
                 </td>
                 <td className="px-6 py-4">
-                  {coupon.usedCount} / {coupon.usageLimit || "∞"}
+                  <div>{coupon.usedCount} / {coupon.usageLimit || "∞"}</div>
+                  {coupon.isOneTimePerUser && (
+                    <div className="text-[10px] text-blue-600 font-bold uppercase mt-1">1 Per User</div>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <button

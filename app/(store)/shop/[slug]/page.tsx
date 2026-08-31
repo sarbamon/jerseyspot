@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getProduct } from "@/lib/api";
 import ProductActions from "@/components/ProductActions";
 import ProductGallery from "@/components/ProductGallery";
@@ -34,6 +35,11 @@ export default async function ProductPage({
 
   // Pass true to disable Next.js caching so stock is always accurate in real-time
   const data = await getProduct(slug, true);
+  
+  if (!data || !data.product) {
+    notFound();
+  }
+  
   const product: Product = data.product;
 
   const discount =
@@ -113,12 +119,12 @@ export default async function ProductPage({
 
             {/* RATING */}
 
-            {product.rating !== undefined && (
+            {product.reviewsCount && product.reviewsCount > 0 ? (
               <div className="mt-4 flex items-center gap-2 text-sm">
 
-                <span className="tracking-wide">
+                <span className="tracking-wide text-yellow-400">
                   {"★".repeat(
-                    Math.round(product.rating)
+                    Math.round(product.rating || 0)
                   )}
                 </span>
 
@@ -126,13 +132,13 @@ export default async function ProductPage({
                   {product.rating}
                   {" "}
                   (
-                  {product.reviewsCount || 0}
+                  {product.reviewsCount}
                   {" "}
                   reviews)
                 </span>
 
               </div>
-            )}
+            ) : null}
 
             {/* PRICE */}
 

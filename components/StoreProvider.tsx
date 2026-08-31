@@ -52,6 +52,8 @@ type StoreContextType = {
   isLoginModalOpen: boolean;
   showLoginModal: () => void;
   closeLoginModal: () => void;
+
+  updateUser: (userData: any) => void;
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(
@@ -229,6 +231,13 @@ export function StoreProvider({
   const showLoginModal = () => setIsLoginModalOpen(true);
   const closeLoginModal = () => setIsLoginModalOpen(false);
 
+  const updateUser = (userData: any) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...userData };
+    setUser(updatedUser);
+    localStorage.setItem("jerseyspot-user", JSON.stringify(updatedUser));
+  };
+
   return (
     <StoreContext.Provider
       value={{
@@ -253,6 +262,7 @@ export function StoreProvider({
         isLoginModalOpen,
         showLoginModal,
         closeLoginModal,
+        updateUser,
       }}
     >
       {children}

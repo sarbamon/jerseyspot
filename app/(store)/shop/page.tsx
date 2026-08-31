@@ -19,6 +19,15 @@ export default async function ShopPage({
   const category = params.category as string | undefined;
   const sort = params.sort as string | undefined;
 
+  const categories = [
+    { label: "Player Version", value: "player-version" },
+    { label: "Fan Version", value: "fan-version" },
+    { label: "Sets", value: "sets" },
+    { label: "Retro", value: "retro" },
+    { label: "Recommended", value: "recommended" },
+    { label: "Clearance", value: "clearance" },
+  ];
+
   let queryStr = "?";
   if (category) queryStr += `category=${category}&`;
   if (sort) queryStr += `sort=${sort}&`;
@@ -30,15 +39,6 @@ export default async function ShopPage({
   } catch (error) {
     console.error("Shop fetch error:", error);
   }
-  
-  const categories = [
-    { label: "Player Version", value: "player-version" },
-    { label: "Fan Version", value: "fan-version" },
-    { label: "Sets", value: "sets" },
-    { label: "Retro", value: "retro" },
-    { label: "Recommended", value: "recommended" },
-    { label: "Clearance", value: "clearance" },
-  ];
 
   const selectedCategoryLabel = categories.find(c => c.value === category)?.label || "All Jerseys";
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, Search, UserCircle, Menu } from "lucide-react";
+import { Search, UserCircle, Menu } from "lucide-react";
+import NotificationDropdown from "./NotificationDropdown";
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -25,9 +26,7 @@ export default function Topbar({ onMenuClick, onLogout }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-4 sm:gap-6">
-        <button className="text-gray-400 transition-colors hover:text-black">
-          <Bell size={20} />
-        </button>
+        <NotificationDropdown />
         <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
         <button onClick={onLogout} className="flex items-center gap-2 text-sm font-bold tracking-wide text-gray-700 transition-colors hover:text-black">
           <UserCircle size={24} />

@@ -24,14 +24,11 @@ export default function ContactPage() {
             </h2>
             
             <div className="space-y-6">
-              <div>
-                <h3 className="mb-1 text-xs font-bold text-gray-500 uppercase tracking-widest">Phone / WhatsApp</h3>
-                <p className="font-serif text-lg text-black">6001142358</p>
-              </div>
+
 
               <div>
                 <h3 className="mb-1 text-xs font-bold text-gray-500 uppercase tracking-widest">Email Support</h3>
-                <p className="font-serif text-lg text-black">support@jerseyspot.com</p>
+                <p className="font-serif text-lg text-black">support@jerseyspot.online</p>
               </div>
 
               <div>

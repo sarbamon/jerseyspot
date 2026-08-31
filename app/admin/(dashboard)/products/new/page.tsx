@@ -1,23 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createProduct, uploadImages } from "@/lib/api";
+
+const PRESET_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "One Size"];
 
 export default function NewProductPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
+  // sizes stored as [{ size: "M", stock: 10 }, ...]
+  const [sizes, setSizes] = useState<{ size: string; stock: number }[]>([]);
+  const [customSizeInput, setCustomSizeInput] = useState("");
+
   const [formData, setFormData] = useState({
     name: "",
-    team: "",
     category: "player-version",
     price: "",
     originalPrice: "",
-    sizes: { S: 10, M: 10, L: 10, XL: 10, XXL: 10 },
     images: ["/images/products/placeholder.jpg"],
     featured: false,
   });
@@ -25,20 +29,30 @@ export default function NewProductPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement;
     const { name, value, type, checked } = target;
-    
-    if (["S", "M", "L", "XL", "XXL"].includes(name)) {
-      setFormData(prev => ({
-        ...prev,
-        sizes: {
-          ...prev.sizes,
-          [name]: parseInt(value, 10) || 0
-        }
-      }));
-    } else if (type === "checkbox") {
+    if (type === "checkbox") {
       setFormData({ ...formData, [name]: checked });
     } else {
       setFormData({ ...formData, [name]: value });
     }
+  };
+
+  // --- Size management ---
+  const addSize = (size: string) => {
+    const label = size.trim().toUpperCase();
+    if (!label) return;
+    if (sizes.find((s) => s.size === label)) return;
+    setSizes((prev) => [...prev, { size: label, stock: 0 }]);
+    setCustomSizeInput("");
+  };
+
+  const removeSize = (size: string) => {
+    setSizes((prev) => prev.filter((s) => s.size !== size));
+  };
+
+  const updateStock = (size: string, stock: number) => {
+    setSizes((prev) =>
+      prev.map((s) => (s.size === size ? { ...s, stock: Math.max(0, stock) } : s))
+    );
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,26 +90,22 @@ export default function NewProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
     try {
-      const slug = formData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
-      
-      const parsedSizes = Object.entries(formData.sizes).map(([size, stock]) => ({
-        size,
-        stock: Number(stock)
-      }));
-      
-      const computedStock = parsedSizes.reduce((sum, item) => sum + item.stock, 0);
+      const slug = formData.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "");
+
+      const computedStock = sizes.reduce((sum, s) => sum + s.stock, 0);
 
       const productPayload = {
         name: formData.name,
-        slug: slug,
-        team: formData.team,
+        slug,
         category: formData.category,
         price: Number(formData.price),
         originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
         stock: computedStock,
-        sizes: parsedSizes,
+        sizes,
         images: formData.images,
         image: formData.images[0] || "/images/products/placeholder.jpg",
         featured: formData.featured,
@@ -109,6 +119,8 @@ export default function NewProductPage() {
       setLoading(false);
     }
   };
+
+  const availablePresets = PRESET_SIZES.filter((s) => !sizes.find((sz) => sz.size === s));
 
   return (
     <div className="max-w-4xl">
@@ -134,11 +146,6 @@ export default function NewProductPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Team / Country</label>
-              <input type="text" name="team" value={formData.team} onChange={handleChange} className="w-full rounded border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
-            </div>
-
-            <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Category</label>
               <select name="category" value={formData.category} onChange={handleChange} className="w-full rounded border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none">
                 <option value="player-version">player-version</option>
@@ -147,7 +154,7 @@ export default function NewProductPage() {
                 <option value="clearance">clearance</option>
               </select>
             </div>
-            
+
             <div className="sm:col-span-2">
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
                 <input
@@ -177,16 +184,79 @@ export default function NewProductPage() {
               <input type="number" name="originalPrice" value={formData.originalPrice} onChange={handleChange} className="w-full rounded border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" />
             </div>
             
+            {/* Dynamic Sizes */}
             <div className="sm:col-span-2">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Stock per Size</label>
-              <div className="grid grid-cols-5 gap-4">
-                {["S", "M", "L", "XL", "XXL"].map((sz) => (
-                  <div key={sz}>
-                    <label className="block text-[10px] font-bold text-gray-500 mb-1">{sz}</label>
-                    <input type="number" name={sz} value={(formData.sizes as any)[sz]} onChange={handleChange} min={0} className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none" required />
-                  </div>
-                ))}
+              <label className="mb-3 block text-xs font-bold uppercase tracking-wider text-gray-700">
+                Sizes &amp; Stock
+              </label>
+
+              {/* Quick-add preset buttons */}
+              {availablePresets.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {availablePresets.map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => addSize(sz)}
+                      className="flex items-center gap-1 rounded border border-dashed border-gray-400 px-3 py-1 text-xs font-bold text-gray-600 hover:border-black hover:text-black transition-colors"
+                    >
+                      <Plus size={11} /> {sz}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Custom size input */}
+              <div className="mb-4 flex gap-2">
+                <input
+                  type="text"
+                  value={customSizeInput}
+                  onChange={(e) => setCustomSizeInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSize(customSizeInput); } }}
+                  placeholder="Custom size (e.g. 38, 40, 42…)"
+                  className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => addSize(customSizeInput)}
+                  className="flex items-center gap-1 rounded bg-black px-4 py-2 text-sm font-bold text-white hover:bg-gray-800"
+                >
+                  <Plus size={14} /> Add
+                </button>
               </div>
+
+              {/* Active sizes with stock inputs */}
+              {sizes.length === 0 ? (
+                <p className="text-xs text-gray-400 italic">No sizes added yet. Use the buttons above to add sizes.</p>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  {sizes.map(({ size, stock }) => (
+                    <div
+                      key={size}
+                      className="flex flex-col items-center gap-1 rounded border border-gray-200 bg-gray-50 px-3 py-2 shadow-sm"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-bold text-gray-700">{size}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSize(size)}
+                          className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-colors"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        value={stock}
+                        onChange={(e) => updateStock(size, parseInt(e.target.value, 10) || 0)}
+                        min={0}
+                        className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm focus:border-black focus:outline-none"
+                      />
+                      <span className="text-[9px] text-gray-400 uppercase tracking-wide">qty</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
 

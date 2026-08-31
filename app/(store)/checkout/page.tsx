@@ -7,10 +7,10 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
-import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig } from "@/lib/api";
+import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig, checkPincode } from "@/lib/api";
 
 export default function CheckoutPage() {
-  const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart, user } = useStore();
+  const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart, user, updateUser } = useStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -31,6 +31,11 @@ export default function CheckoutPage() {
     firstName: "", lastName: "", email: "", phoneNumber: "", streetAddress: "", city: "", state: "", postalCode: ""
   });
   const [deliveryCharge, setDeliveryCharge] = useState(150);
+  
+  // Pincode Serviceability State
+  const [isServiceable, setIsServiceable] = useState<boolean | null>(null);
+  const [checkingPincode, setCheckingPincode] = useState(false);
+  const [pincodeMessage, setPincodeMessage] = useState("");
 
   useEffect(() => {
     getSiteConfig().then((data) => {
@@ -68,6 +73,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     async function fetchPincodeDetails() {
       if (shipping.postalCode && shipping.postalCode.length === 6 && /^\d+$/.test(shipping.postalCode)) {
+        // 1. Fetch Pincode Details (City/State)
         try {
           const res = await fetch(`https://api.postalpincode.in/pincode/${shipping.postalCode}`);
           const data = await res.json();
@@ -82,6 +88,28 @@ export default function CheckoutPage() {
         } catch (err) {
           console.error("Failed to fetch pincode details", err);
         }
+        
+        // 2. Check iCarry Serviceability
+        setCheckingPincode(true);
+        setPincodeMessage("");
+        try {
+          const res = await checkPincode(shipping.postalCode);
+          setIsServiceable(res.isServiceable);
+          if (res.isServiceable) {
+            setPincodeMessage("Delivery available to this pincode!");
+          } else {
+            setPincodeMessage("Sorry, we currently do not deliver to this pincode.");
+          }
+        } catch (err: any) {
+          console.error("Failed to check pincode serviceability:", err);
+          setIsServiceable(false);
+          setPincodeMessage(err.message || "Sorry, we currently do not deliver to this pincode.");
+        } finally {
+          setCheckingPincode(false);
+        }
+      } else {
+        setIsServiceable(null);
+        setPincodeMessage("");
       }
     }
     fetchPincodeDetails();
@@ -186,6 +214,10 @@ export default function CheckoutPage() {
               razorpay_signature: response.razorpay_signature,
               order_id: order._id,
             });
+            
+            // Save the shipping address to the local user state so it autofills next time
+            updateUser({ shippingAddress: shipping });
+            
             setSuccess(true);
             clearCart();
           } catch (error) {
@@ -303,6 +335,12 @@ export default function CheckoutPage() {
                     const val = e.target.value.replace(/\D/g, '');
                     setShipping(prev => ({ ...prev, postalCode: val }));
                   }} maxLength={6} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                  {checkingPincode && <p className="text-xs text-gray-500 mt-1">Checking serviceability...</p>}
+                  {pincodeMessage && !checkingPincode && (
+                    <p className={`text-xs mt-1 font-medium ${isServiceable ? 'text-green-600' : 'text-red-600'}`}>
+                      {pincodeMessage}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">City / District</label>
@@ -395,8 +433,8 @@ export default function CheckoutPage() {
               <button
                 form="checkout-form"
                 type="submit"
-                disabled={loading}
-                className="mt-8 w-full bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-900 disabled:opacity-50"
+                disabled={loading || isServiceable === false || checkingPincode}
+                className={`mt-8 w-full px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] transition-colors ${(loading || isServiceable === false || checkingPincode) ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-900'}`}
               >
                 {loading ? "Processing..." : "Place Order"}
               </button>

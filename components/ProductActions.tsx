@@ -7,6 +7,7 @@ import {
   StoreProduct,
   useStore,
 } from "./StoreProvider";
+import { checkPincode as checkPincodeICarry } from "@/lib/api";
 
 export default function ProductActions({
   product,
@@ -40,18 +41,19 @@ export default function ProductActions({
     setPinStatus("loading");
     setPinMessage("");
     try {
-      const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-      const data = await res.json();
-      if (data && data[0] && data[0].Status === "Success" && data[0].PostOffice && data[0].PostOffice.length > 0) {
+      // 1. Check serviceability with iCarry via our backend
+      const iCarryRes = await checkPincodeICarry(pincode);
+      
+      if (iCarryRes.isServiceable) {
         setPinStatus("success");
-        setPinMessage(`Delivery available to ${data[0].PostOffice[0].District}`);
+        setPinMessage(iCarryRes.locationName ? `Delivery available to ${iCarryRes.locationName}` : "Delivery available to this pincode!");
       } else {
         setPinStatus("error");
-        setPinMessage("Invalid pincode or not serviceable.");
+        setPinMessage("Sorry, we currently do not deliver to this pincode.");
       }
-    } catch (err) {
+    } catch (err: any) {
       setPinStatus("error");
-      setPinMessage("Error checking pincode.");
+      setPinMessage(err.message || "Sorry, we currently do not deliver to this pincode.");
     }
   };
 

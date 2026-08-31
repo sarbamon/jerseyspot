@@ -10,7 +10,7 @@ export default function PromoSection() {
       
       <div className="mx-auto grid max-w-[1420px] items-center gap-12 lg:grid-cols-2 lg:gap-24 relative z-10">
 
-        <div className="group relative aspect-[4/5] sm:aspect-[1.25] overflow-hidden rounded-2xl shadow-2xl">
+        <div className="hidden lg:block group relative aspect-[4/5] sm:aspect-[1.25] overflow-hidden rounded-2xl shadow-2xl">
           {/* Subtle overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 pointer-events-none" />
           

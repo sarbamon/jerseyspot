@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getMyOrders } from "@/lib/api";
+import { getMyOrders, getAds } from "@/lib/api";
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { useStore } from "@/components/StoreProvider";
 
 export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
+  const [ad, setAd] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("active"); // "active" or "history"
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const { isInitialized, isAuthenticated, logout, showLoginModal, user } = useStore();
 
   useEffect(() => {
@@ -22,17 +24,21 @@ export default function MyOrdersPage() {
     }
     
     if (isInitialized && isAuthenticated) {
-      fetchOrders();
+      fetchData();
     }
   }, [isInitialized, isAuthenticated, showLoginModal]);
 
-  const fetchOrders = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await getMyOrders(true);
-      if (data.orders) {
-        setOrders(data.orders);
-      }
+      const [ordersData, adsData] = await Promise.all([
+        getMyOrders(true),
+        getAds(true, "orders_top")
+      ]);
+      
+      if (ordersData.orders) setOrders(ordersData.orders);
+      if (adsData.ads && adsData.ads.length > 0) setAd(adsData.ads[0]);
+      
     } catch (err: any) {
       console.error("Failed to fetch user orders:", err);
       setError(err.message || "Failed to load orders");
@@ -62,6 +68,10 @@ export default function MyOrdersPage() {
   }
 
   const filteredOrders = orders.filter((order: any) => {
+    // Basic search
+    if (searchTerm && !order._id.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
     const isDelivered = order.deliveryStatus === "Delivered" || order.isDelivered;
     if (activeTab === "active" && isDelivered) return false;
     if (activeTab === "history" && !isDelivered) return false;
@@ -69,138 +79,129 @@ export default function MyOrdersPage() {
   });
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-12 text-black sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="font-serif text-3xl font-black tracking-widest text-black">
-            MY ORDERS {user ? `- ${user.name}` : ""}
-          </h1>
+    <main className="min-h-screen bg-gray-50 text-black">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white px-4 py-4 shadow-sm flex items-center gap-4">
+        <Link href="/account" className="text-gray-600">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </Link>
+        <h1 className="text-lg font-semibold text-gray-900 flex-1">My Orders</h1>
+        <div className="flex items-center gap-4 text-gray-600">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-2xl pb-20">
+        {/* Promotional Banner */}
+        {ad && (
+          <div className="p-4">
+            <Link href={ad.link || "#"} className="block relative h-[120px] w-full overflow-hidden rounded-xl bg-black">
+              <img 
+                src={ad.imageUrl} 
+                alt={ad.name} 
+                className="h-full w-full object-cover"
+              />
+            </Link>
+          </div>
+        )}
+
+        {/* Search Bar */}
+        <div className="px-4 mb-4">
+          <div className="relative flex items-center w-full rounded-lg border border-gray-300 bg-white px-3 py-2">
+            <svg className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input 
+              type="text"
+              placeholder="Search your order here"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="ml-2 w-full bg-transparent text-sm outline-none placeholder:text-gray-500"
+            />
+            <div className="ml-auto flex items-center gap-1 border-l pl-2 text-gray-500">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <span className="text-xs font-medium">Filters</span>
+            </div>
+          </div>
         </div>
 
-        <div className="mb-6 flex border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab("active")}
-            className={`px-6 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${
-              activeTab === "active" ? "border-b-2 border-black text-black" : "text-gray-400 hover:text-black"
-            }`}
+        {/* Filter Pills */}
+        <div className="flex gap-2 px-4 mb-6 overflow-x-auto hide-scrollbar">
+          <button 
+            onClick={() => setActiveTab("all")}
+            className={`shrink-0 rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-black text-white' : 'border border-gray-300 bg-white text-gray-700'}`}
           >
-            Active Orders
+            All
           </button>
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`px-6 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${
-              activeTab === "history" ? "border-b-2 border-black text-black" : "text-gray-400 hover:text-black"
-            }`}
+          <button 
+            onClick={() => setActiveTab("active")}
+            className={`shrink-0 rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${activeTab === 'active' ? 'bg-black text-white' : 'border border-gray-300 bg-white text-gray-700'}`}
           >
-            History
+            Active
+          </button>
+          <button 
+            onClick={() => setActiveTab("history")}
+            className={`shrink-0 rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${activeTab === 'history' ? 'bg-black text-white' : 'border border-gray-300 bg-white text-gray-700'}`}
+          >
+            Delivered
           </button>
         </div>
 
         {filteredOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
-            <Package size={48} className="mb-4 text-gray-400" />
-            <h2 className="mb-2 text-xl font-bold">No {activeTab} orders found</h2>
-            <p className="mb-6 text-gray-500">You don't have any {activeTab} orders at the moment.</p>
-            <Link href="/shop" className="bg-black px-8 py-3 font-bold uppercase tracking-wider text-[#f4c84a] transition hover:bg-gray-800">
-              START SHOPPING
-            </Link>
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <Package size={48} className="mb-4 text-gray-300" />
+            <h2 className="mb-2 text-lg font-bold text-gray-900">No orders found</h2>
+            <p className="text-sm text-gray-500">You don't have any matching orders.</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {filteredOrders.map((order: any) => (
-              <div key={order._id} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <div className="mb-4 flex flex-col justify-between border-b border-gray-100 pb-4 sm:flex-row sm:items-center">
-                  <div>
-                    <p className="text-xs font-bold text-gray-500">ORDER ID</p>
-                    <p className="font-mono text-sm font-bold text-black">{order._id}</p>
-                  </div>
-                  <div className="mt-2 sm:mt-0 sm:text-right">
-                    <p className="text-xs font-bold text-gray-500">ORDER DATE</p>
-                    <p className="text-sm font-bold text-black">{new Date(order.createdAt).toLocaleDateString()}</p>
-                  </div>
-                </div>
+          <div className="flex flex-col">
+            {filteredOrders.map((order: any) => {
+              const mainItem = order.orderItems[0] || {};
+              const isDelivered = order.deliveryStatus === "Delivered" || order.isDelivered;
+              const statusColor = isDelivered ? "text-green-600" : order.isPaid ? "text-green-600" : "text-red-500";
+              const statusText = isDelivered 
+                ? `Delivered on ${new Date(order.deliveredAt || order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` 
+                : order.deliveryStatus === "Out for Delivery" 
+                  ? "Arriving today (12:00 AM - 11:59 PM)"
+                  : order.isPaid 
+                    ? `Delivery expected by ${new Date(new Date(order.createdAt).getTime() + 5*24*60*60*1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                    : "Order Not Placed";
 
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  {/* Status */}
-                  <div>
-                    <p className="mb-1 text-xs font-bold text-gray-500">PAYMENT</p>
-                    {order.isPaid ? (
-                      <span className="rounded bg-green-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-green-800">
-                        Paid
-                      </span>
-                    ) : (
-                      <span className="rounded bg-yellow-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-yellow-800">
-                        Pending
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <p className="mb-1 text-xs font-bold text-gray-500">DELIVERY STATUS</p>
-                    {order.deliveryStatus === "Delivered" ? (
-                      <span className="rounded bg-green-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-green-800">
-                        {order.deliveryStatus}
-                      </span>
-                    ) : order.deliveryStatus === "Out for Delivery" || order.deliveryStatus === "Near You" ? (
-                      <span className="rounded bg-blue-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-blue-800">
-                        {order.deliveryStatus || "Processing"}
-                      </span>
-                    ) : order.deliveryStatus === "In Transit" ? (
-                      <span className="rounded bg-purple-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-purple-800">
-                        {order.deliveryStatus}
-                      </span>
-                    ) : (
-                      <span className="rounded bg-gray-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-800">
-                        {order.deliveryStatus || "Processing"}
-                      </span>
-                    )}
-                  </div>
+              const subText = order.isPaid 
+                ? (order.deliveryStatus || "Your order is being processed")
+                : "Payment not successful. Please contact your bank for any money deducted.";
 
-                  {/* Total */}
-                  <div>
-                    <p className="mb-1 text-xs font-bold text-gray-500">TOTAL</p>
-                    <p className="font-bold text-black">₹{order.totalPrice.toLocaleString("en-IN")}</p>
+              return (
+                <Link 
+                  href={`/orders/${order._id}`} 
+                  key={order._id} 
+                  className="flex items-center gap-4 border-b border-gray-200 bg-white p-4 active:bg-gray-50"
+                >
+                  {/* Image */}
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-gray-100 p-2">
+                    <img 
+                      src={mainItem.image || "/placeholder.png"} 
+                      alt={mainItem.name} 
+                      className="max-h-full max-w-full object-contain mix-blend-multiply"
+                    />
                   </div>
-
-                  {/* Shipping */}
-                  <div>
-                    <p className="mb-1 text-xs font-bold text-gray-500">SHIPPED TO</p>
-                    <p className="text-sm text-gray-700">
-                      {order.shippingAddress?.firstName} {order.shippingAddress?.lastName}
-                    </p>
-                  </div>
-
-                  {/* Tracking */}
-                  {order.trackingNumber && (
-                    <div className="sm:col-span-2 lg:col-span-4 mt-2 rounded bg-gray-50 p-3 border border-gray-100 flex items-center justify-between">
-                      <div>
-                        <p className="mb-1 text-xs font-bold text-gray-500">TRACKING NUMBER</p>
-                        <p className="text-sm font-mono font-bold text-black">{order.trackingNumber}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="mb-1 text-xs font-bold text-gray-500">COURIER</p>
-                        <p className="text-sm font-bold text-black">{order.courierName || "Standard Courier"}</p>
-                      </div>
+                  
+                  {/* Content */}
+                  <div className="flex flex-1 flex-col justify-center">
+                    <div className={`text-sm font-semibold ${statusColor}`}>
+                      {statusText}
                     </div>
-                  )}
-                </div>
-
-                {/* Items */}
-                <div className="mt-6 pt-4 border-t border-gray-100">
-                  <h3 className="mb-3 text-sm font-bold text-gray-500">ITEMS</h3>
-                  <div className="space-y-3">
-                    {order.orderItems.map((item: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-black">{item.quantity}x</span>
-                          <span className="text-gray-700">{item.name}</span>
-                        </div>
-                        <div className="font-bold">₹{(item.price * item.quantity).toLocaleString("en-IN")}</div>
-                      </div>
-                    ))}
+                    <div className="mt-1 text-xs text-gray-500 line-clamp-1">
+                      {subText}
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+
+                  {/* Arrow */}
+                  <div className="flex items-center justify-center text-gray-400">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Users, Settings, Tag, X } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, Settings, Tag, X, Image as ImageIcon } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Customers", href: "/admin/customers", icon: Users },
     { name: "Coupons", href: "/admin/coupons", icon: Tag },
+    { name: "Ads", href: "/admin/ads", icon: ImageIcon },
     { name: "Settings", href: "/admin/settings", icon: Settings },
   ];
 

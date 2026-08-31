@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getOrders, updateDeliveryStatus, deleteOrder } from "@/lib/api";
+import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking } from "@/lib/api";
 import { Trash2, Search, CheckSquare } from "lucide-react";
 
 export default function AdminOrdersPage() {
@@ -11,10 +11,46 @@ export default function AdminOrdersPage() {
   const [activeTab, setActiveTab] = useState("active"); // "active" or "history"
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState("");
+  const [pickupPoints, setPickupPoints] = useState<any[]>([]);
+  const [selectedPickup, setSelectedPickup] = useState<{ [orderId: string]: string }>({});
+  
+  const [trackingModalOrder, setTrackingModalOrder] = useState<any>(null);
+  const [trackingData, setTrackingData] = useState<any>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
 
   useEffect(() => {
     fetchOrders();
+    fetchConfig();
   }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const data = await getSiteConfig(true);
+      if (data.config && data.config.pickupPoints) {
+        setPickupPoints(data.config.pickupPoints);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const openTrackingModal = async (orderId: string) => {
+    setTrackingModalOrder(orderId);
+    setTrackingLoading(true);
+    setTrackingData(null);
+    try {
+      const res = await getOrderTracking(orderId);
+      if (res.tracking) {
+        setTrackingData(res.tracking);
+      } else {
+        alert("Could not fetch tracking");
+      }
+    } catch (e: any) {
+      alert(e.message || "Failed to fetch tracking");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -31,7 +67,13 @@ export default function AdminOrdersPage() {
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
-      await updateDeliveryStatus(orderId, newStatus);
+      let otp = undefined;
+      if (newStatus === "Delivered") {
+        otp = window.prompt("Enter the 4-digit Delivery OTP provided by the user:");
+        if (otp === null) return; // Cancelled
+      }
+
+      await updateDeliveryStatus(orderId, newStatus, otp);
       setOrders((prevOrders: any) => 
         prevOrders.map((o: any) => {
           if (o._id === orderId) {
@@ -44,9 +86,29 @@ export default function AdminOrdersPage() {
           return o;
         })
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update status:", error);
-      alert("Failed to update delivery status");
+      alert(error.message || "Failed to update delivery status");
+      // Re-fetch to reset the select dropdown if it failed
+      fetchOrders();
+    }
+  };
+
+  const handleBookShipment = async (orderId: string) => {
+    try {
+      const pId = selectedPickup[orderId] || (pickupPoints.length > 0 ? pickupPoints[0].icarryId : "");
+      if (!pId) {
+        alert("Please configure pickup points in Settings first.");
+        return;
+      }
+      
+      const m = await import('@/lib/api');
+      // @ts-ignore
+      await m.bookShipment(orderId, pId);
+      alert('Shipment booked successfully!');
+      fetchOrders();
+    } catch (err: any) {
+      alert(err.message || 'Failed to book shipment');
     }
   };
 
@@ -99,6 +161,10 @@ export default function AdminOrdersPage() {
 
   const handleBulkStatus = async () => {
     if (selectedOrders.length === 0 || !bulkStatus) return;
+    if (bulkStatus === "Delivered") {
+      alert("Cannot bulk update to 'Delivered' because each order requires a unique Delivery OTP. Please update them individually.");
+      return;
+    }
     if (!window.confirm(`Change status to ${bulkStatus} for ${selectedOrders.length} orders?`)) return;
 
     setLoading(true);
@@ -249,6 +315,7 @@ export default function AdminOrdersPage() {
                   <th className="px-6 py-4">Order ID</th>
                   <th className="px-6 py-4">Date</th>
                   <th className="px-6 py-4">Customer</th>
+                  <th className="px-6 py-4">Products</th>
                   <th className="px-6 py-4">Total Amount</th>
                   <th className="px-6 py-4">Payment</th>
                   <th className="px-6 py-4">Tracking</th>
@@ -284,6 +351,15 @@ export default function AdminOrdersPage() {
                         <div className="font-bold text-black">{order.shippingAddress?.firstName} {order.shippingAddress?.lastName}</div>
                         <div className="text-xs text-gray-500">{order.shippingAddress?.email}</div>
                       </td>
+                      <td className="px-6 py-4 text-xs text-gray-700">
+                        {order.orderItems?.map((item: any, idx: number) => (
+                          <div key={idx} className="mb-1">
+                            <span className="font-semibold text-black">{item.name}</span>
+                            <br />
+                            <span className="text-[10px] text-gray-500">Size: {item.size} • Qty: {item.quantity}</span>
+                          </div>
+                        ))}
+                      </td>
                       <td className="px-6 py-4 font-bold text-black">
                         ₹{order.totalPrice.toLocaleString("en-IN")}
                       </td>
@@ -303,23 +379,32 @@ export default function AdminOrdersPage() {
                           <div>
                             <div className="font-mono text-xs font-bold text-black">{order.trackingNumber}</div>
                             <div className="text-[10px] uppercase text-gray-500">{order.courierName || "N/A"}</div>
+                            <button
+                              onClick={() => openTrackingModal(order._id)}
+                              className="mt-2 text-[10px] font-bold text-blue-600 hover:underline"
+                            >
+                              VIEW TRACKING
+                            </button>
                           </div>
                         ) : (
                           <div className="flex flex-col gap-2">
                             <span className="text-xs text-gray-400">Not Booked</span>
+                            {pickupPoints.length > 0 && (
+                              <select 
+                                className="w-full text-[10px] p-1 border border-gray-300 rounded outline-none bg-white"
+                                value={selectedPickup[order._id] || pickupPoints[0].icarryId}
+                                onChange={(e) => setSelectedPickup(prev => ({...prev, [order._id]: e.target.value}))}
+                              >
+                                {pickupPoints.map((pt: any) => (
+                                  <option key={pt.icarryId} value={pt.icarryId}>{pt.name}</option>
+                                ))}
+                              </select>
+                            )}
                             <button
-                              onClick={async () => {
-                                try {
-                                  await import('@/lib/api').then(m => m.bookShipment(order._id));
-                                  alert('Shipment booked successfully!');
-                                  fetchOrders();
-                                } catch (err: any) {
-                                  alert(err.message || 'Failed to book shipment');
-                                }
-                              }}
+                              onClick={() => handleBookShipment(order._id)}
                               className="w-fit rounded border border-black px-2 py-1 text-[10px] font-bold tracking-wider text-black transition-colors hover:bg-black hover:text-[#f4c84a]"
                             >
-                              BOOK DELIVERY
+                              BOOK VIA iCARRY
                             </button>
                           </div>
                         )}
@@ -351,6 +436,53 @@ export default function AdminOrdersPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tracking Modal */}
+      {trackingModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between border-b pb-4 mb-4">
+              <h2 className="font-serif text-xl font-bold">Live Tracking</h2>
+              <button onClick={() => setTrackingModalOrder(null)} className="text-gray-500 hover:text-black">
+                <CheckSquare size={20} className="hidden" /> {/* just importing X from lucide, but CheckSquare is there so we'll just use text for now */}
+                Close
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              {trackingLoading ? (
+                <div className="flex justify-center p-8">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-black"></div>
+                </div>
+              ) : trackingData ? (
+                <div className="space-y-6">
+                  <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                    <p className="text-sm font-bold text-black">Status: <span className="text-blue-600">{trackingData.status || "Processing"}</span></p>
+                    <p className="text-xs text-gray-500">Courier: {trackingData.courierName}</p>
+                    {trackingData.location && <p className="text-xs text-gray-500">Current Location: {trackingData.location}</p>}
+                  </div>
+
+                  <div className="relative border-l-2 border-gray-200 ml-3 pl-4 space-y-6">
+                    {trackingData.details && trackingData.details.map((event: any, idx: number) => (
+                      <div key={idx} className="relative">
+                        <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-black border-2 border-white"></div>
+                        <p className="text-xs font-bold text-gray-500">{new Date(event.datetime).toLocaleString()}</p>
+                        <p className="text-sm font-bold text-black">{event.location}</p>
+                        <p className="text-sm text-gray-600">{event.notes}</p>
+                      </div>
+                    ))}
+                    {(!trackingData.details || trackingData.details.length === 0) && (
+                      <p className="text-sm text-gray-500">No detailed tracking events yet.</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No tracking data available.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

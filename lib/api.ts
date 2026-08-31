@@ -5,9 +5,7 @@ if (!API_URL) {
 }
 
 export async function getProducts(params = "", noCache = false) {
-  const fetchOptions: RequestInit = noCache 
-    ? { cache: "no-store" } 
-    : { next: { revalidate: 60 } };
+  const fetchOptions: RequestInit = { cache: "no-store" };
 
   try {
     const response = await fetch(
@@ -28,9 +26,7 @@ export async function getProducts(params = "", noCache = false) {
 }
 
 export async function getProduct(slug: string, noCache = false) {
-  const fetchOptions: RequestInit = noCache 
-    ? { cache: "no-store" } 
-    : { next: { revalidate: 60 } };
+  const fetchOptions: RequestInit = { cache: "no-store" };
 
   try {
     const response = await fetch(
@@ -133,6 +129,26 @@ export async function getUsers() {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to fetch users");
+  }
+
+  return response.json();
+}
+
+export async function updateAdminProfile(data: any) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+
+  const response = await fetch(`${API_URL}/auth/profile`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update profile");
   }
 
   return response.json();
@@ -355,7 +371,29 @@ export async function getMyOrders(noCache = false) {
   return response.json();
 }
 
-export async function updateDeliveryStatus(orderId: string, status: string) {
+export async function getMyOrderById(id: string, noCache = false) {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-token");
+  }
+  
+  const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
+  
+  const response = await fetch(`${API_URL}/orders/myorders/${id}`, {
+    ...fetchOptions,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch order details");
+  }
+
+  return response.json();
+}
+
+export async function updateDeliveryStatus(orderId: string, status: string, otp?: string) {
   let token = null;
   if (typeof window !== 'undefined') {
     token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
@@ -367,12 +405,98 @@ export async function updateDeliveryStatus(orderId: string, status: string) {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, otp }),
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to update delivery status");
+    const error = await response.json();
+    throw new Error(error.message || "Failed to update order status");
+  }
+
+  return response.json();
+}
+
+// ==========================================
+// ADS API
+// ==========================================
+
+export async function getAds(activeOnly = false, position?: string) {
+  let url = `${API_URL}/ads?`;
+  if (activeOnly) url += `activeOnly=true&`;
+  if (position) url += `position=${position}&`;
+  
+  const response = await fetch(url, {
+    next: { revalidate: 60 } // Cache for 60 seconds
+  });
+  
+  if (!response.ok) {
+    throw new Error("Failed to fetch ads");
+  }
+  return response.json();
+}
+
+export async function createAd(adData: any) {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
+  }
+  
+  const response = await fetch(`${API_URL}/ads`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(adData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create ad");
+  }
+
+  return response.json();
+}
+
+export async function updateAd(id: string, adData: any) {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
+  }
+  
+  const response = await fetch(`${API_URL}/ads/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(adData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to update ad");
+  }
+
+  return response.json();
+}
+
+export async function deleteAd(id: string) {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
+  }
+  
+  const response = await fetch(`${API_URL}/ads/${id}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to delete ad");
   }
 
   return response.json();
@@ -399,14 +523,14 @@ export async function deleteOrder(id: string) {
   return response.json();
 }
 
-export async function bookShipment(id: string) {
+export async function cancelOrder(id: string) {
   let token = null;
   if (typeof window !== 'undefined') {
     token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
   }
 
-  const response = await fetch(`${API_URL}/orders/${id}/book-shipment`, {
-    method: "POST",
+  const response = await fetch(`${API_URL}/orders/${id}/cancel`, {
+    method: "PUT",
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
@@ -414,11 +538,49 @@ export async function bookShipment(id: string) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to book shipment");
+    throw new Error(errorData.message || "Failed to cancel order");
   }
 
   return response.json();
 }
+
+export const bookShipment = async (orderId: string, pickupAddressId: string) => {
+  const res = await fetch(`${API_URL}/orders/${orderId}/book-shipment`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+    body: JSON.stringify({ pickupAddressId }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to book shipment");
+  }
+  return res.json();
+};
+
+export const getOrderTracking = async (orderId: string) => {
+  const res = await fetch(`${API_URL}/orders/${orderId}/tracking`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch tracking");
+  }
+  return res.json();
+};
+
+export const checkPincode = async (pincode: string) => {
+  const res = await fetch(`${API_URL}/orders/check-pincode?pincode=${pincode}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Pincode is unserviceable");
+  }
+  return res.json();
+};
 
 // ==========================================
 // COUPON API
@@ -444,6 +606,7 @@ export async function createCoupon(couponData: {
   discountType: "percentage" | "fixed";
   discountValue: number;
   usageLimit?: number;
+  isOneTimePerUser?: boolean;
 }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
   const response = await fetch(`${API_URL}/coupons`, {
@@ -458,6 +621,27 @@ export async function createCoupon(couponData: {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to create coupon");
   }
+  return response.json();
+}
+
+
+export async function bulkDeleteProducts(ids: string[]) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+
+  const response = await fetch(`${API_URL}/products/bulk`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ ids }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to bulk delete products");
+  }
+
   return response.json();
 }
 
@@ -477,7 +661,11 @@ export async function deleteCoupon(id: string) {
 }
 
 export async function validateCoupon(code: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-token') : null;
   const response = await fetch(`${API_URL}/coupons/validate/${code}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
     cache: "no-store",
   });
   if (!response.ok) {
