@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
-export default function Header() {
+export default function Header({ categories = [] }: { categories?: { name: string; href: string }[] }) {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -98,47 +98,15 @@ export default function Header() {
 
               {shopOpen && (
                 <div className="absolute left-0 top-full mt-6 w-52 border border-[#292929] bg-black py-2 shadow-xl">
-                  <a
-                    href="/shop?category=player-version"
-                    className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]"
-                  >
-                    PLAYER VERSION
-                  </a>
-
-                  <a
-                    href="/shop?category=fan-version"
-                    className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]"
-                  >
-                    FAN VERSION
-                  </a>
-
-                  <a
-                    href="/shop?category=sets"
-                    className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]"
-                  >
-                    SETS
-                  </a>
-
-                  <a
-                    href="/shop?category=retro"
-                    className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]"
-                  >
-                    RETRO
-                  </a>
-
-                  <a
-                    href="/shop?category=recommended"
-                    className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]"
-                  >
-                    RECOMMENDED
-                  </a>
-
-                  <a
-                    href="/shop?category=clearance"
-                    className="block px-5 py-3 font-serif text-sm font-bold hover:bg-[#111]"
-                  >
-                    CLEARANCE
-                  </a>
+                  {categories.map((cat, index) => (
+                    <a
+                      key={index}
+                      href={cat.href}
+                      className="block px-5 py-3 font-serif text-sm font-bold uppercase hover:bg-[#111]"
+                    >
+                      {cat.name}
+                    </a>
+                  ))}
                 </div>
               )}
             </div>
@@ -302,55 +270,16 @@ export default function Header() {
 
                 {shopOpen && (
                   <div className="pb-2">
-
-                    <a
-                      href="/shop?category=player-version"
-                      onClick={closeMenu}
-                      className="block px-2 py-3 font-serif text-[13px] font-bold"
-                    >
-                      PLAYER VERSION
-                    </a>
-
-                    <a
-                      href="/shop?category=fan-version"
-                      onClick={closeMenu}
-                      className="block px-2 py-3 font-serif text-[13px] font-bold"
-                    >
-                      FAN VERSION
-                    </a>
-
-                    <a
-                      href="/shop?category=sets"
-                      onClick={closeMenu}
-                      className="block px-2 py-3 font-serif text-[13px] font-bold"
-                    >
-                      SETS
-                    </a>
-
-                    <a
-                      href="/shop?category=retro"
-                      onClick={closeMenu}
-                      className="block px-2 py-3 font-serif text-[13px] font-bold"
-                    >
-                      RETRO
-                    </a>
-
-                    <a
-                      href="/shop?category=recommended"
-                      onClick={closeMenu}
-                      className="block px-2 py-3 font-serif text-[13px] font-bold"
-                    >
-                      RECOMMENDED
-                    </a>
-
-                    <a
-                      href="/shop?category=clearance"
-                      onClick={closeMenu}
-                      className="block px-2 py-3 font-serif text-[13px] font-bold"
-                    >
-                      CLEARANCE
-                    </a>
-
+                    {categories.map((cat, index) => (
+                      <a
+                        key={index}
+                        href={cat.href}
+                        onClick={closeMenu}
+                        className="block px-2 py-3 font-serif text-[13px] font-bold uppercase"
+                      >
+                        {cat.name}
+                      </a>
+                    ))}
                   </div>
                 )}
               </div>

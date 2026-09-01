@@ -116,7 +116,8 @@ export default function CheckoutPage() {
   }, [shipping.postalCode]);
 
   const subtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
-  const shippingCost = subtotal > 0 ? deliveryCharge : 0;
+  const totalItemsCount = cart.reduce((count, item) => count + item.quantity, 0);
+  const shippingCost = subtotal > 0 ? Math.min(deliveryCharge * totalItemsCount, 700) : 0;
   
   let discountAmount = 0;
   if (appliedCoupon) {

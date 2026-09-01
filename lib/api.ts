@@ -545,11 +545,16 @@ export async function cancelOrder(id: string) {
 }
 
 export const bookShipment = async (orderId: string, pickupAddressId: string) => {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
+  }
+
   const res = await fetch(`${API_URL}/orders/${orderId}/book-shipment`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
     body: JSON.stringify({ pickupAddressId }),
   });
@@ -561,9 +566,14 @@ export const bookShipment = async (orderId: string, pickupAddressId: string) => 
 };
 
 export const getOrderTracking = async (orderId: string) => {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
+  }
+
   const res = await fetch(`${API_URL}/orders/${orderId}/tracking`, {
     headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
   });
   if (!res.ok) {

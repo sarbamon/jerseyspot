@@ -19,7 +19,6 @@ export default function OrderDetailsPage() {
   const [error, setError] = useState("");
   const [openDelivery, setOpenDelivery] = useState(false);
   const [openPrice, setOpenPrice] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
   const { isInitialized, isAuthenticated, showLoginModal } = useStore();
 
   useEffect(() => {
@@ -99,19 +98,6 @@ export default function OrderDetailsPage() {
   const isConfirmed = isShipped || order.deliveryStatus === "Processing" || order.deliveryStatus === "Placed" || order.isPaid;
 
   const currentStep = isDelivered ? 3 : isShipped ? 2 : isConfirmed ? 1 : 0;
-
-  const handleCancelOrder = async () => {
-    if (!confirm("Are you sure you want to cancel this order?")) return;
-    try {
-      setCancelling(true);
-      await import('@/lib/api').then(m => m.cancelOrder(orderId));
-      fetchData();
-    } catch (err: any) {
-      alert(err.message || "Failed to cancel order");
-    } finally {
-      setCancelling(false);
-    }
-  };
 
   return (
     <main className="min-h-screen bg-gray-100 pb-20 text-black font-sans selection:bg-black selection:text-white">
@@ -240,24 +226,7 @@ export default function OrderDetailsPage() {
               <button onClick={() => setShowAllUpdates(true)} className="text-blue-600 font-semibold text-sm">See all updates</button>
             </div>
           ) : null}
-
-          {/* Cancel button */}
-          {!isCancelled && !isShipped && !isDelivered && (
-            <div className="mt-6 border-t border-gray-100 pt-4">
-              <button
-                onClick={handleCancelOrder}
-                disabled={cancelling}
-                className="w-full py-3 border border-red-200 text-red-600 font-bold text-sm rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
-              >
-                {cancelling ? "Cancelling..." : "Cancel Order"}
-              </button>
-            </div>
-          )}
-        </div>
-
-
-
-        {/* Bottom Banner */}
+        </div>        {/* Bottom Banner */}
         {ad && (
           <div className="p-4 bg-white">
             <Link href={ad.link || "#"} className="block relative h-[160px] w-full overflow-hidden rounded-xl bg-black">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking } from "@/lib/api";
+import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder } from "@/lib/api";
 import { Trash2, Search, CheckSquare } from "lucide-react";
 
 export default function AdminOrdersPage() {
@@ -102,9 +102,7 @@ export default function AdminOrdersPage() {
         return;
       }
       
-      const m = await import('@/lib/api');
-      // @ts-ignore
-      await m.bookShipment(orderId, pId);
+      await bookShipment(orderId, pId);
       alert('Shipment booked successfully!');
       fetchOrders();
     } catch (err: any) {
@@ -122,6 +120,19 @@ export default function AdminOrdersPage() {
     } catch (error) {
       console.error("Failed to delete order:", error);
       alert("Failed to delete order");
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!window.confirm("Are you sure you want to cancel this order? Stock will be restored.")) return;
+    
+    try {
+      await cancelOrder(orderId);
+      alert("Order cancelled successfully");
+      fetchOrders();
+    } catch (error: any) {
+      console.error("Failed to cancel order:", error);
+      alert(error.message || "Failed to cancel order");
     }
   };
 
@@ -273,6 +284,7 @@ export default function AdminOrdersPage() {
               <option value="Near You">Near You</option>
               <option value="Out for Delivery">Out for Delivery</option>
               <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
             <button
               onClick={handleBulkStatus}
@@ -420,12 +432,22 @@ export default function AdminOrdersPage() {
                           <option value="Near You">Near You</option>
                           <option value="Out for Delivery">Out for Delivery</option>
                           <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
                         </select>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        {!order.isCancelled && order.deliveryStatus !== 'Cancelled' && (
+                          <button
+                            onClick={() => handleCancelOrder(order._id)}
+                            className="text-[10px] font-bold uppercase tracking-wider text-orange-600 hover:text-orange-800 transition-colors"
+                            title="Cancel Order"
+                          >
+                            Cancel
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(order._id)}
-                          className="text-gray-400 hover:text-red-600 transition-colors"
+                          className="text-gray-400 hover:text-red-600 transition-colors ml-2"
                           title="Delete Order"
                         >
                           <Trash2 size={18} />

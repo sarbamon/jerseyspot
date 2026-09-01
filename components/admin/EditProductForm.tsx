@@ -1,17 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Save, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateProduct, uploadImages } from "@/lib/api";
+import { updateProduct, uploadImages, getSiteConfig } from "@/lib/api";
 
 const PRESET_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "One Size"];
 
 export default function EditProductForm({ product }: { product: any }) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [categories, setCategories] = useState<{name: string, value: string}[]>([
+    { name: "Player Version", value: "player-version" },
+    { name: "Fan Version", value: "fan-version" },
+    { name: "Retro", value: "retro" },
+  ]);
   const router = useRouter();
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const configData = await getSiteConfig(true);
+        if (configData.config && configData.config.categories) {
+          const dynamicCategories = configData.config.categories.map((c: any) => ({
+            name: c.name,
+            value: c.href.split("=")[1] || c.name.toLowerCase().replace(/\s+/g, '-'),
+          }));
+          if (dynamicCategories.length > 0) {
+            setCategories(dynamicCategories);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load categories for form", e);
+      }
+    }
+    fetchCategories();
+  }, []);
 
   // Build initial sizes from product data as [{ size, stock }]
   const initialSizes: { size: string; stock: number }[] = [];
@@ -160,10 +185,9 @@ export default function EditProductForm({ product }: { product: any }) {
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Category</label>
               <select name="category" value={formData.category} onChange={handleChange} className="w-full rounded border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none">
-                <option value="player-version">player-version</option>
-                <option value="fan-version">fan-version</option>
-                <option value="retro">retro</option>
-                <option value="clearance">clearance</option>
+                {categories.map(cat => (
+                  <option key={cat.value} value={cat.value}>{cat.name}</option>
+                ))}
               </select>
             </div>
 

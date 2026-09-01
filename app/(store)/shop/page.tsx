@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getProducts } from "@/lib/api";
 import ShopFilters from "@/components/ShopFilters";
 import ProductWishlistButton from "@/components/ProductWishlistButton";
+import Pagination from "@/components/Pagination";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -18,24 +19,50 @@ export default async function ShopPage({
   const params = await searchParams;
   const category = params.category as string | undefined;
   const sort = params.sort as string | undefined;
+  const pageStr = params.page as string | undefined;
+  const page = pageStr ? parseInt(pageStr, 10) : 1;
 
-  const categories = [
-    { label: "Player Version", value: "player-version" },
-    { label: "Fan Version", value: "fan-version" },
-    { label: "Sets", value: "sets" },
-    { label: "Retro", value: "retro" },
-    { label: "Recommended", value: "recommended" },
-    { label: "Clearance", value: "clearance" },
-  ];
+  let siteCategories: { label: string; value: string }[] = [];
+  try {
+    // We import getSiteConfig at the top if needed (it is already imported usually, wait let me check imports)
+    const { getSiteConfig } = await import("@/lib/api");
+    const configData = await getSiteConfig(true);
+    if (configData.config && configData.config.categories) {
+      siteCategories = configData.config.categories.map((c: any) => ({
+        label: c.name,
+        // extract the value from href, e.g. "/shop?category=foo" -> "foo"
+        value: c.href.split("=")[1] || c.name.toLowerCase().replace(/\s+/g, '-'),
+      }));
+    }
+  } catch (err) {
+    console.error("Failed to load shop categories:", err);
+  }
+
+  // Fallback if none
+  if (siteCategories.length === 0) {
+    siteCategories = [
+      { label: "Player Version", value: "player-version" },
+      { label: "Fan Version", value: "fan-version" },
+      { label: "Sets", value: "sets" },
+      { label: "Retro", value: "retro" },
+      { label: "Recommended", value: "recommended" },
+    ];
+  }
+  const categories = siteCategories;
 
   let queryStr = "?";
   if (category) queryStr += `category=${category}&`;
   if (sort) queryStr += `sort=${sort}&`;
+  if (page) queryStr += `page=${page}&`;
 
   let products = [];
+  let totalPages = 1;
+  let currentPage = 1;
   try {
     const data = await getProducts(queryStr);
     products = data.products || [];
+    totalPages = data.pages || 1;
+    currentPage = data.page || 1;
   } catch (error) {
     console.error("Shop fetch error:", error);
   }
@@ -128,6 +155,10 @@ export default async function ShopPage({
                   </Link>
                 ))}
               </div>
+            )}
+            
+            {totalPages > 1 && (
+              <Pagination currentPage={currentPage} totalPages={totalPages} />
             )}
           </div>
       </div>

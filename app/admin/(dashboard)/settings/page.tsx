@@ -60,6 +60,37 @@ export default function AdminSettingsPage() {
     }));
   };
 
+  const handleAddCategory = () => {
+    setConfig((prev) => ({
+      ...prev,
+      categories: [...(prev.categories || []), { name: "", href: "", image: "" }]
+    }));
+  };
+
+  const handleRemoveCategory = (index: number) => {
+    setConfig((prev) => ({
+      ...prev,
+      categories: (prev.categories || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleCategoryChange = (index: number, field: "name" | "href", value: string) => {
+    setConfig((prev) => {
+      const newCategories = [...(prev.categories || [])];
+      if (field === "name") {
+        const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        newCategories[index] = { 
+          ...newCategories[index], 
+          name: value,
+          href: `/shop?category=${slug}`
+        };
+      } else {
+        newCategories[index] = { ...newCategories[index], [field]: value };
+      }
+      return { ...prev, categories: newCategories };
+    });
+  };
+
   const handlePickupPointChange = (index: number, field: "name" | "icarryId", value: string) => {
     setConfig((prev) => {
       const newPoints = [...(prev.pickupPoints || [])];
@@ -261,12 +292,56 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-xl font-bold font-serif border-b pb-2">Homepage Categories</h2>
+            <div className="flex items-center justify-between border-b pb-2">
+              <h2 className="text-xl font-bold font-serif">Homepage Categories</h2>
+              <button
+                type="button"
+                onClick={handleAddCategory}
+                className="text-xs font-bold bg-black text-[#f4c84a] px-3 py-1 rounded hover:bg-gray-800"
+              >
+                + ADD
+              </button>
+            </div>
             <div className="grid gap-6 sm:grid-cols-2">
               {config.categories && config.categories.map((cat, index) => (
-                <div key={index} className="border border-gray-200 p-4 rounded-lg">
+                <div key={index} className="relative border border-gray-200 p-4 rounded-lg bg-gray-50">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCategory(index)}
+                    className="absolute right-2 top-2 rounded p-1 text-red-500 hover:bg-red-50 z-10"
+                  >
+                    <X size={20} />
+                  </button>
+                  
+                  <div className="space-y-3 mb-4 pr-8">
+                    <div>
+                      <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-700">
+                        Category Name
+                      </label>
+                      <input
+                        type="text"
+                        value={cat.name}
+                        onChange={(e) => handleCategoryChange(index, "name", e.target.value)}
+                        placeholder="e.g. Football Jerseys"
+                        className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-700">
+                        Link URL (href)
+                      </label>
+                      <input
+                        type="text"
+                        value={cat.href}
+                        onChange={(e) => handleCategoryChange(index, "href", e.target.value)}
+                        placeholder="e.g. /shop?category=football"
+                        className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
                   <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">
-                    {cat.name} Image
+                    Image
                   </label>
                   
                   {cat.image ? (

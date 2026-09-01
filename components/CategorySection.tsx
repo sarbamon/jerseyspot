@@ -26,45 +26,22 @@ const defaultCategories = [
     name: "Recommended",
     href: "/shop?category=recommended",
     image: "/images/hero.jpg"
-  },
-  {
-    name: "Clearance",
-    href: "/shop?category=clearance",
-    image: "/images/categories/clearance.jpg"
-  },
+  }
 ];
 
 export default async function CategorySection() {
   let categories = defaultCategories;
-  let activeCategories = new Set<string>();
-
   try {
     const configData = await getSiteConfig(true);
     if (configData.config && configData.config.categories && configData.config.categories.length > 0) {
       categories = configData.config.categories;
     }
-
-    // Fetch products to check category availability
-    const productsData = await getProducts("?limit=1000"); // Fetch max possible to check existence
-    if (productsData && productsData.products) {
-      productsData.products.forEach((p: any) => {
-        if (p.category) {
-          // Normalize the DB category (e.g. "player-version" -> "player version")
-          activeCategories.add(p.category.replace(/-/g, ' ').toLowerCase());
-        }
-      });
-    }
   } catch (error) {
-    console.error("Failed to load dynamic categories or products:", error);
+    console.error("Failed to load dynamic categories:", error);
   }
 
-  // Filter categories to only show ones that have products
-  const availableCategories = categories.filter(cat => 
-    activeCategories.has(cat.name.toLowerCase().replace(/-/g, ' '))
-  );
+  const availableCategories = categories;
 
-  // If no products exist, maybe fallback to all or just show empty (user requested: "if no products dont show here")
-  // So we only render the filtered ones. If empty, maybe don't render the section?
   if (availableCategories.length === 0) {
     return null;
   }
