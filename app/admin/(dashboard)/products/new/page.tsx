@@ -52,7 +52,7 @@ export default function NewProductPage() {
     category: "player-version",
     price: "",
     originalPrice: "",
-    images: ["/images/products/placeholder.jpg"],
+    images: [] as string[],
     featured: false,
   });
 
