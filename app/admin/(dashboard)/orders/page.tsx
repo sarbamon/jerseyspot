@@ -361,7 +361,18 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-black">{order.shippingAddress?.firstName} {order.shippingAddress?.lastName}</div>
-                        <div className="text-xs text-gray-500">{order.shippingAddress?.email}</div>
+                        <div className="text-xs text-gray-500 mb-2">{order.shippingAddress?.email}</div>
+                        
+                        <div className="text-xs text-gray-700">
+                          <span className="font-semibold">Phone:</span> {order.shippingAddress?.phoneNumber}
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-1 max-w-[200px] whitespace-normal">
+                          {order.shippingAddress?.houseOrBuilding 
+                            ? `${order.shippingAddress?.houseOrBuilding}, ${order.shippingAddress?.roadAreaColony}${order.shippingAddress?.landmark ? `, ${order.shippingAddress?.landmark}` : ""}` 
+                            : order.shippingAddress?.streetAddress}
+                          <br />
+                          {order.shippingAddress?.city}, {order.shippingAddress?.postalCode}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-xs text-gray-700">
                         {order.orderItems?.map((item: any, idx: number) => (

@@ -28,7 +28,7 @@ export default function CheckoutPage() {
   const [couponSuccess, setCouponSuccess] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [shipping, setShipping] = useState({
-    firstName: "", lastName: "", email: "", phoneNumber: "", streetAddress: "", city: "", state: "", postalCode: ""
+    firstName: "", lastName: "", email: "", phoneNumber: "", houseOrBuilding: "", roadAreaColony: "", landmark: "", city: "", state: "", postalCode: ""
   });
   const [deliveryCharge, setDeliveryCharge] = useState(150);
   
@@ -61,7 +61,9 @@ export default function CheckoutPage() {
           lastName: user.shippingAddress?.lastName || lastName,
           email: user.shippingAddress?.email || user.email || "",
           phoneNumber: user.shippingAddress?.phoneNumber || prev.phoneNumber,
-          streetAddress: user.shippingAddress?.streetAddress || prev.streetAddress,
+          houseOrBuilding: user.shippingAddress?.houseOrBuilding || prev.houseOrBuilding,
+          roadAreaColony: user.shippingAddress?.roadAreaColony || prev.roadAreaColony,
+          landmark: user.shippingAddress?.landmark || prev.landmark,
           city: user.shippingAddress?.city || prev.city,
           state: user.shippingAddress?.state || prev.state || "",
           postalCode: user.shippingAddress?.postalCode || prev.postalCode,
@@ -379,8 +381,18 @@ export default function CheckoutPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Street Address</label>
-                <input type="text" name="streetAddress" value={shipping.streetAddress} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">House No. / Building Name</label>
+                <input type="text" name="houseOrBuilding" value={shipping.houseOrBuilding} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Road Name, Area, Colony</label>
+                <input type="text" name="roadAreaColony" value={shipping.roadAreaColony} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Landmark (Optional)</label>
+                <input type="text" name="landmark" value={shipping.landmark} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" />
               </div>
 
               <div className="grid gap-6 sm:grid-cols-3">

@@ -257,7 +257,11 @@ export default function OrderDetailsPage() {
             {openDelivery && (
               <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
                 <p className="font-semibold text-black">{order.shippingAddress?.firstName} {order.shippingAddress?.lastName}</p>
-                <p className="mt-1">{order.shippingAddress?.streetAddress}</p>
+                <p className="mt-1">
+                  {order.shippingAddress?.houseOrBuilding 
+                    ? `${order.shippingAddress?.houseOrBuilding}, ${order.shippingAddress?.roadAreaColony}${order.shippingAddress?.landmark ? `, ${order.shippingAddress?.landmark}` : ""}` 
+                    : order.shippingAddress?.streetAddress}
+                </p>
                 <p>{order.shippingAddress?.city}, {order.shippingAddress?.postalCode}</p>
                 <p className="mt-1">Phone: {order.shippingAddress?.phoneNumber}</p>
                 <p>Email: {order.shippingAddress?.email}</p>
