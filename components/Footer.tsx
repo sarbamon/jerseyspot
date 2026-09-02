@@ -56,6 +56,7 @@ export default function Footer({ categories = [] }: { categories?: { name: strin
             <Link href="/" className="transition-colors hover:text-[#f4c84a]">Home</Link>
             <Link href="/about" className="transition-colors hover:text-[#f4c84a]">About us</Link>
             <Link href="/terms" className="transition-colors hover:text-[#f4c84a]">Terms & Conditions</Link>
+            <Link href="/privacy" className="transition-colors hover:text-[#f4c84a]">Privacy Policy</Link>
           </div>
         </div>
 
