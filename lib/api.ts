@@ -5,7 +5,7 @@ if (!API_URL) {
 }
 
 export async function getProducts(params = "", noCache = false) {
-  const fetchOptions: RequestInit = { cache: "no-store" };
+  const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
 
   try {
     const response = await fetch(
@@ -26,7 +26,7 @@ export async function getProducts(params = "", noCache = false) {
 }
 
 export async function getProduct(slug: string, noCache = false) {
-  const fetchOptions: RequestInit = { cache: "no-store" };
+  const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
 
   try {
     const response = await fetch(
