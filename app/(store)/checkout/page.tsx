@@ -386,7 +386,7 @@ export default function CheckoutPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Road Name, Area, Colony</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Street Address</label>
                 <input type="text" name="roadAreaColony" value={shipping.roadAreaColony} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
               </div>
 

@@ -18,6 +18,68 @@ export default function AdminOrdersPage() {
   const [trackingData, setTrackingData] = useState<any>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
 
+  // iCarry Booking Modal State
+  const [bookingModalOrder, setBookingModalOrder] = useState<any>(null);
+  const [bookingDetails, setBookingDetails] = useState({
+    contactName: "",
+    mobile: "",
+    streetAddress: "",
+    pincode: "",
+    city: "",
+    state: "MH",
+    weight: 500,
+    length: 25,
+    breadth: 10,
+    height: 9.20,
+    parcelType: "Prepaid",
+    invoiceValue: 0,
+    contents: "Jersey",
+    mode: "Surface",
+    courier_id: "",
+    origin_pincode: "400001",
+    pickupAddressId: "",
+    returnAddressId: "",
+    rtoAddressId: ""
+  });
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [couriers, setCouriers] = useState<any[]>([]);
+  const [fetchingCouriers, setFetchingCouriers] = useState(false);
+
+  useEffect(() => {
+    async function fetchPincodeDetails() {
+      if (bookingDetails.pincode && bookingDetails.pincode.length === 6 && /^\d+$/.test(bookingDetails.pincode)) {
+        try {
+          const res = await fetch(`https://api.postalpincode.in/pincode/${bookingDetails.pincode}`);
+          const data = await res.json();
+          if (data && data[0] && data[0].Status === "Success" && data[0].PostOffice && data[0].PostOffice.length > 0) {
+            const postOffice = data[0].PostOffice[0];
+            const stateName = postOffice.State;
+            const stateCodeMap: { [key: string]: string } = {
+              "Andaman and Nicobar Islands": "AN", "Andaman & Nicobar Islands": "AN", "Andhra Pradesh": "AP", "Arunachal Pradesh": "AR", "Assam": "AS",
+              "Bihar": "BR", "Chandigarh": "CH", "Chhattisgarh": "CG", "Dadra and Nagar Haveli": "DN", "Dadra & Nagar Haveli": "DN", "Daman and Diu": "DD", "Daman & Diu": "DD",
+              "Delhi": "DL", "Goa": "GA", "Gujarat": "GJ", "Haryana": "HR", "Himachal Pradesh": "HP", "Jammu and Kashmir": "JK", "Jammu & Kashmir": "JK",
+              "Jharkhand": "JH", "Karnataka": "KA", "Kerala": "KL", "Ladakh": "LA", "Lakshadweep": "LD", "Madhya Pradesh": "MP",
+              "Maharashtra": "MH", "Manipur": "MN", "Meghalaya": "ML", "Mizoram": "MZ", "Nagaland": "NL", "Odisha": "OR",
+              "Puducherry": "PY", "Punjab": "PB", "Rajasthan": "RJ", "Sikkim": "SK", "Tamil Nadu": "TN", "Telangana": "TS",
+              "Tripura": "TR", "Uttar Pradesh": "UP", "Uttarakhand": "UK", "West Bengal": "WB"
+            };
+            const code = stateCodeMap[stateName] || "MH";
+            setBookingDetails(prev => ({
+              ...prev,
+              city: postOffice.District || prev.city,
+              state: code
+            }));
+          }
+        } catch (err) {
+          console.error("Failed to fetch pincode details", err);
+        }
+      }
+    }
+    if (bookingModalOrder) {
+      fetchPincodeDetails();
+    }
+  }, [bookingDetails.pincode, bookingModalOrder]);
+
   useEffect(() => {
     fetchOrders();
     fetchConfig();
@@ -94,19 +156,97 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleBookShipment = async (orderId: string) => {
+  const openBookingModal = (order: any) => {
+    setBookingModalOrder(order);
+    
+    // Pre-fill fields
+    let contentsStr = order.orderItems?.map((item: any) => `${item.quantity}x ${item.name}`).join(", ") || "";
+    if (contentsStr.length > 250) contentsStr = contentsStr.substring(0, 250);
+
+    setBookingDetails({
+      contactName: `${order.shippingAddress?.firstName || ""} ${order.shippingAddress?.lastName || ""}`.trim(),
+      mobile: order.shippingAddress?.phoneNumber?.replace(/[^0-9]/g, "").slice(-10) || "",
+      streetAddress: order.shippingAddress?.houseOrBuilding 
+        ? `${order.shippingAddress?.houseOrBuilding}, ${order.shippingAddress?.roadAreaColony}${order.shippingAddress?.landmark ? `, ${order.shippingAddress?.landmark}` : ""}`
+        : (order.shippingAddress?.streetAddress || ""),
+      pincode: order.shippingAddress?.postalCode || "",
+      city: order.shippingAddress?.city || "",
+      state: "MH", // Default
+      weight: 500,
+      length: 25,
+      breadth: 10,
+      height: 9.20,
+      parcelType: "Prepaid",
+      invoiceValue: order.totalPrice || 0,
+      contents: "Jersey",
+      mode: "Surface",
+      courier_id: "",
+      origin_pincode: "400001",
+      pickupAddressId: selectedPickup[order._id] || (pickupPoints.length > 0 ? pickupPoints[0].icarryId : ""),
+      returnAddressId: "", // Same as pickup
+      rtoAddressId: "" // Same as pickup
+    });
+    setCouriers([]);
+  };
+
+  const handleGetRates = async () => {
+    setFetchingCouriers(true);
     try {
-      const pId = selectedPickup[orderId] || (pickupPoints.length > 0 ? pickupPoints[0].icarryId : "");
+      const { checkRates } = await import("@/lib/api");
+      const res = await checkRates({
+        length: bookingDetails.length,
+        breadth: bookingDetails.breadth,
+        height: bookingDetails.height,
+        weight: bookingDetails.weight,
+        destination_pincode: bookingDetails.pincode,
+        origin_pincode: bookingDetails.origin_pincode,
+        shipment_mode: bookingDetails.mode === 'Air' ? 'E' : 'S',
+        shipment_type: bookingDetails.parcelType === 'COD' ? 'C' : 'P',
+        shipment_value: bookingDetails.invoiceValue
+      });
+      
+      if (res.success && res.estimates) {
+        // estimates is an object with courier names as keys or array
+        let courierList = [];
+        if (Array.isArray(res.estimates)) {
+           courierList = res.estimates;
+        } else {
+           courierList = Object.values(res.estimates);
+        }
+        setCouriers(courierList);
+        if (courierList.length > 0) {
+           setBookingDetails(prev => ({ ...prev, courier_id: courierList[0].courier_id || courierList[0].courier_group_id }));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to get rates. Please check details.");
+    } finally {
+      setFetchingCouriers(false);
+    }
+  };
+
+  const handleConfirmBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingModalOrder) return;
+    
+    setBookingLoading(true);
+    try {
+      const pId = bookingDetails.pickupAddressId;
       if (!pId) {
         alert("Please configure pickup points in Settings first.");
+        setBookingLoading(false);
         return;
       }
       
-      await bookShipment(orderId, pId);
+      await bookShipment(bookingModalOrder._id, pId, bookingDetails);
       alert('Shipment booked successfully!');
+      setBookingModalOrder(null);
       fetchOrders();
     } catch (err: any) {
       alert(err.message || 'Failed to book shipment');
+    } finally {
+      setBookingLoading(false);
     }
   };
 
@@ -412,19 +552,8 @@ export default function AdminOrdersPage() {
                         ) : (
                           <div className="flex flex-col gap-2">
                             <span className="text-xs text-gray-400">Not Booked</span>
-                            {pickupPoints.length > 0 && (
-                              <select 
-                                className="w-full text-[10px] p-1 border border-gray-300 rounded outline-none bg-white"
-                                value={selectedPickup[order._id] || pickupPoints[0].icarryId}
-                                onChange={(e) => setSelectedPickup(prev => ({...prev, [order._id]: e.target.value}))}
-                              >
-                                {pickupPoints.map((pt: any) => (
-                                  <option key={pt.icarryId} value={pt.icarryId}>{pt.name}</option>
-                                ))}
-                              </select>
-                            )}
                             <button
-                              onClick={() => handleBookShipment(order._id)}
+                              onClick={() => openBookingModal(order)}
                               className="w-fit rounded border border-black px-2 py-1 text-[10px] font-bold tracking-wider text-black transition-colors hover:bg-black hover:text-[#f4c84a]"
                             >
                               BOOK VIA iCARRY
@@ -516,6 +645,162 @@ export default function AdminOrdersPage() {
                 <p className="text-sm text-gray-500">No tracking data available.</p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Modal */}
+      {bookingModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b pb-4 mb-4">
+              <h2 className="font-serif text-xl font-bold">Book iCarry Shipment</h2>
+              <button onClick={() => setBookingModalOrder(null)} className="text-gray-500 hover:text-black font-bold text-xs uppercase tracking-wider">
+                Cancel
+              </button>
+            </div>
+            
+            <form onSubmit={handleConfirmBooking} className="flex-1 overflow-y-auto pr-2 pb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                <div className="sm:col-span-2 text-sm font-bold border-b pb-2 mb-2">Address Settings</div>
+                
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-orange-600 mb-1">Pickup Address *</label>
+                  <select required value={bookingDetails.pickupAddressId} onChange={e => setBookingDetails({...bookingDetails, pickupAddressId: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black">
+                    <option value="" disabled>Select Pickup Address</option>
+                    {pickupPoints.map((pt: any) => (
+                      <option key={pt.icarryId} value={pt.icarryId}>{pt.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-orange-600 mb-1">Shipper Address on Label (From Address) *</label>
+                  <select value={bookingDetails.returnAddressId} onChange={e => setBookingDetails({...bookingDetails, returnAddressId: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black">
+                    <option value="">Same as Pickup Address</option>
+                    {pickupPoints.map((pt: any) => (
+                      <option key={pt.icarryId} value={pt.icarryId}>{pt.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+
+
+                <div className="sm:col-span-2 text-sm font-bold border-b pb-2 mb-2 mt-4">Consignee Details</div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Contact Name *</label>
+                  <input required type="text" value={bookingDetails.contactName} onChange={e => setBookingDetails({...bookingDetails, contactName: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Mobile *</label>
+                  <input required type="text" value={bookingDetails.mobile} onChange={e => setBookingDetails({...bookingDetails, mobile: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Street Address *</label>
+                  <input required type="text" value={bookingDetails.streetAddress} onChange={e => setBookingDetails({...bookingDetails, streetAddress: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Pincode *</label>
+                  <input required type="text" value={bookingDetails.pincode} onChange={e => setBookingDetails({...bookingDetails, pincode: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">City *</label>
+                  <input required type="text" value={bookingDetails.city} onChange={e => setBookingDetails({...bookingDetails, city: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">State Code (e.g. MH) *</label>
+                  <input required type="text" maxLength={2} value={bookingDetails.state} onChange={e => setBookingDetails({...bookingDetails, state: e.target.value.toUpperCase()})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black uppercase" />
+                </div>
+                
+                <div className="sm:col-span-2 text-sm font-bold border-b pb-2 mb-2 mt-4">Parcel Details</div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Origin Pincode *</label>
+                  <input required type="text" value={bookingDetails.origin_pincode} onChange={e => setBookingDetails({...bookingDetails, origin_pincode: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Mode *</label>
+                  <select required value={bookingDetails.mode} onChange={e => setBookingDetails({...bookingDetails, mode: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black">
+                    <option value="Surface">Surface</option>
+                    <option value="Air">Air</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Weight (Grams) *</label>
+                  <input required type="number" value={bookingDetails.weight} onChange={e => setBookingDetails({...bookingDetails, weight: parseInt(e.target.value) || 0})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Invoice Value (₹) *</label>
+                  <input required type="number" value={bookingDetails.invoiceValue} onChange={e => setBookingDetails({...bookingDetails, invoiceValue: parseFloat(e.target.value) || 0})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div className="sm:col-span-2 grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Length (cm) *</label>
+                    <input required type="number" step="any" value={bookingDetails.length} onChange={e => setBookingDetails({...bookingDetails, length: parseFloat(e.target.value) || 0})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Breadth (cm) *</label>
+                    <input required type="number" step="any" value={bookingDetails.breadth} onChange={e => setBookingDetails({...bookingDetails, breadth: parseFloat(e.target.value) || 0})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Height (cm) *</label>
+                    <input required type="number" step="any" value={bookingDetails.height} onChange={e => setBookingDetails({...bookingDetails, height: parseFloat(e.target.value) || 0})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                  </div>
+                </div>
+                
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Parcel Contents *</label>
+                  <input required type="text" value={bookingDetails.contents} onChange={e => setBookingDetails({...bookingDetails, contents: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black" />
+                </div>
+                
+                <div className="sm:col-span-2 mt-4 border-t pt-4">
+                  <div className="flex items-center gap-4 mb-4">
+                    <button type="button" onClick={handleGetRates} disabled={fetchingCouriers} className="bg-gray-800 text-white px-4 py-2 text-xs font-bold rounded">
+                      {fetchingCouriers ? "FETCHING RATES..." : "GET RATES & COURIERS"}
+                    </button>
+                    {couriers.length > 0 && <span className="text-xs text-green-600 font-bold">{couriers.length} couriers found!</span>}
+                  </div>
+                  
+                  {couriers.length > 0 && (
+                    <div className="mb-4">
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Select Courier *</label>
+                      <select required value={bookingDetails.courier_id} onChange={e => setBookingDetails({...bookingDetails, courier_id: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black">
+                        {couriers.map((c: any, i: number) => (
+                          <option key={i} value={c.courier_id || c.courier_group_id}>
+                            {c.courier_name || c.courier_group_name} - ₹{c.courier_cost || c.total}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                
+              </div>
+              
+              <div className="mt-6 flex justify-end gap-3 border-t pt-4">
+                <button type="button" onClick={() => setBookingModalOrder(null)} className="px-4 py-2 border border-gray-300 rounded text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={bookingLoading} className="px-4 py-2 bg-black text-white rounded text-sm font-bold flex items-center justify-center min-w-[140px] hover:bg-gray-800 disabled:opacity-50 transition-colors">
+                  {bookingLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  ) : (
+                    "Confirm Booking"
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

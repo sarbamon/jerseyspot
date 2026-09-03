@@ -544,7 +544,7 @@ export async function cancelOrder(id: string) {
   return response.json();
 }
 
-export const bookShipment = async (orderId: string, pickupAddressId: string) => {
+export const bookShipment = async (orderId: string, pickupAddressId: string, shipmentDetails?: any) => {
   let token = null;
   if (typeof window !== 'undefined') {
     token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
@@ -556,7 +556,7 @@ export const bookShipment = async (orderId: string, pickupAddressId: string) => 
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
-    body: JSON.stringify({ pickupAddressId }),
+    body: JSON.stringify({ pickupAddressId, shipmentDetails }),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -588,6 +588,28 @@ export const checkPincode = async (pincode: string) => {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Pincode is unserviceable");
+  }
+  return res.json();
+};
+
+export const checkRates = async (shipmentDetails: any) => {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token");
+  }
+  
+  const res = await fetch(`${API_URL}/orders/check-rates`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ shipmentDetails })
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to check rates");
   }
   return res.json();
 };
