@@ -1,15 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getProducts } from "@/lib/api";
+import Pagination from "@/components/Pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, page: pageStr } = await searchParams;
+  const page = pageStr ? parseInt(pageStr, 10) : 1;
 
   if (!q) {
     return (
@@ -21,9 +23,15 @@ export default async function SearchPage({
   }
 
   let products = [];
+  let totalPages = 1;
+  let currentPage = 1;
+  let totalProducts = 0;
   try {
-    const data = await getProducts(`?search=${encodeURIComponent(q)}`);
+    const data = await getProducts(`?search=${encodeURIComponent(q)}&page=${page}`);
     products = data.products || [];
+    totalPages = data.pages || 1;
+    currentPage = data.page || 1;
+    totalProducts = data.total || products.length;
   } catch (error) {
     console.error("Search error:", error);
   }
@@ -36,7 +44,9 @@ export default async function SearchPage({
             Search Results for "{q}"
           </h1>
           <p className="mt-2 text-sm text-gray-500">
-            {products.length} {products.length === 1 ? "product" : "products"} found
+            {totalProducts > products.length 
+              ? `Showing ${products.length} of ${totalProducts} products` 
+              : `${products.length} ${products.length === 1 ? "product" : "products"} found`}
           </p>
         </div>
 
@@ -51,56 +61,62 @@ export default async function SearchPage({
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-0 border-l border-t border-gray-200 sm:grid-cols-3 xl:grid-cols-4">
-            {products.map((product: any) => (
-              <Link
-                key={product._id}
-                href={`/shop/${product.slug}`}
-                className="group flex flex-col border-b border-r border-gray-200 p-4 transition-colors hover:bg-gray-50"
-              >
-                {/* TOP ROW: Category & Price */}
-                <div className="mb-4 flex items-start justify-between">
-                  <div className="border border-black px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">
-                    {product.category.replace("-version", "").replace("-", " ")}
+          <>
+            <div className="grid grid-cols-2 gap-0 border-l border-t border-gray-200 sm:grid-cols-3 xl:grid-cols-4">
+              {products.map((product: any) => (
+                <Link
+                  key={product._id}
+                  href={`/shop/${product.slug}`}
+                  className="group flex flex-col border-b border-r border-gray-200 p-4 transition-colors hover:bg-gray-50"
+                >
+                  {/* TOP ROW: Category & Price */}
+                  <div className="mb-4 flex items-start justify-between">
+                    <div className="border border-black px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">
+                      {product.category.replace("-version", "").replace("-", " ")}
+                    </div>
+                    <div className="flex flex-col items-end sm:flex-row sm:items-center sm:gap-1.5">
+                      <span className="text-sm font-bold text-black sm:text-base">
+                        ₹{product.price.toLocaleString("en-IN")}
+                      </span>
+                      {product.originalPrice &&
+                        product.originalPrice > product.price && (
+                          <span className="text-[10px] text-gray-400 line-through sm:text-xs">
+                            ₹{product.originalPrice.toLocaleString("en-IN")}
+                          </span>
+                        )}
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end sm:flex-row sm:items-center sm:gap-1.5">
-                    <span className="text-sm font-bold text-black sm:text-base">
-                      ₹{product.price.toLocaleString("en-IN")}
-                    </span>
-                    {product.originalPrice &&
-                      product.originalPrice > product.price && (
-                        <span className="text-[10px] text-gray-400 line-through sm:text-xs">
-                          ₹{product.originalPrice.toLocaleString("en-IN")}
-                        </span>
-                      )}
-                  </div>
-                </div>
 
-                {/* IMAGE */}
-                <div className="relative mb-6 flex w-full flex-1 items-center justify-center overflow-hidden">
-                  <div className="relative w-full max-w-[160px] aspect-[4/5] sm:max-w-[200px]">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      className="object-cover transition duration-500 group-hover:scale-105"
-                    />
+                  {/* IMAGE */}
+                  <div className="relative mb-6 flex w-full flex-1 items-center justify-center overflow-hidden">
+                    <div className="relative w-full max-w-[160px] aspect-[4/5] sm:max-w-[200px]">
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className="object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* BOTTOM ROW: Title & Subtext */}
-                <div className="mt-auto">
-                  <h3 className="line-clamp-2 font-serif text-[13px] font-bold uppercase leading-tight text-black sm:text-sm">
-                    {product.name}
-                  </h3>
-                  <p className="mt-2 text-[9px] uppercase tracking-widest text-gray-400 sm:text-[10px]">
-                    {product.team || "NEW"}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+                  {/* BOTTOM ROW: Title & Subtext */}
+                  <div className="mt-auto">
+                    <h3 className="line-clamp-2 font-serif text-[13px] font-bold uppercase leading-tight text-black sm:text-sm">
+                      {product.name}
+                    </h3>
+                    <p className="mt-2 text-[9px] uppercase tracking-widest text-gray-400 sm:text-[10px]">
+                      {product.team || "NEW"}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <Pagination currentPage={currentPage} totalPages={totalPages} />
+            )}
+          </>
         )}
       </div>
     </main>

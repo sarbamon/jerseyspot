@@ -99,10 +99,7 @@ export default function BulkUploadButton() {
               Upload your CSV file together with all your product photos in one click!
             </p>
 
-            <div className="mb-4 rounded border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
-              <span className="font-bold">✨ Direct Photo Upload:</span> You can select your CSV file AND all photo files on your computer together. They will automatically be uploaded to <strong>Cloudinary</strong> and attached to each product!
-            </div>
-            
+
             <form onSubmit={handleUpload}>
               <div className="mb-4">
                 <label className="mb-2 block text-sm font-bold text-gray-700">1. Select CSV File</label>

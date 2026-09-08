@@ -8,11 +8,12 @@ import Image from "next/image";
 export default function AdminSettingsPage() {
   const [config, setConfig] = useState({
     heroImage: "",
+    sizeGuideImage: "",
     deliveryCharge: 150,
     categories: [] as { name: string; href: string; image: string }[],
     pickupPoints: [] as { name: string; icarryId: string }[],
   });
-  
+
   const [accountData, setAccountData] = useState({
     email: "",
     oldPassword: "",
@@ -128,7 +129,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "hero" | number) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "hero" | "sizeGuide" | number) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
     setUploading(true);
@@ -137,6 +138,8 @@ export default function AdminSettingsPage() {
       if (data.urls && data.urls.length > 0) {
         if (type === "hero") {
           setConfig((prev) => ({ ...prev, heroImage: data.urls[0] }));
+        } else if (type === "sizeGuide") {
+          setConfig((prev) => ({ ...prev, sizeGuideImage: data.urls[0] }));
         } else {
           // type is the category index
           setConfig((prev) => {
@@ -253,43 +256,85 @@ export default function AdminSettingsPage() {
             <div className="space-y-4">
               <h2 className="text-xl font-bold font-serif border-b pb-2">Hero Section</h2>
             
-            <div>
-              <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">
-                Hero Background Image
-              </label>
-              
-              {config.heroImage && (
-                <div className="relative mb-4 h-48 w-full max-w-lg overflow-hidden rounded border border-gray-200">
-                  <Image src={config.heroImage} alt="Hero Preview" fill className="object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setConfig(prev => ({ ...prev, heroImage: "" }))}
-                    className="absolute right-2 top-2 rounded-full bg-white p-1 text-red-500 shadow hover:bg-gray-100"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex items-center justify-center w-full max-w-lg">
-                <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
-                  <div className="flex flex-col items-center justify-center pb-6 pt-5">
-                    <UploadCloud className="mb-2 text-gray-500" size={24} />
-                    <p className="text-sm text-gray-500">
-                      {uploading ? "Uploading..." : "Click to upload a new hero image"}
-                    </p>
-                  </div>
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept="image/*" 
-                    onChange={(e) => handleImageUpload(e, "hero")} 
-                    disabled={uploading} 
-                  />
+              <div>
+                <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">
+                  Hero Background Image
                 </label>
+                
+                {config.heroImage && (
+                  <div className="relative mb-4 h-48 w-full max-w-lg overflow-hidden rounded border border-gray-200">
+                    <Image src={config.heroImage} alt="Hero Preview" fill className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setConfig(prev => ({ ...prev, heroImage: "" }))}
+                      className="absolute right-2 top-2 rounded-full bg-white p-1 text-red-500 shadow hover:bg-gray-100"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-center w-full max-w-lg">
+                  <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
+                    <div className="flex flex-col items-center justify-center pb-6 pt-5">
+                      <UploadCloud className="mb-2 text-gray-500" size={24} />
+                      <p className="text-sm text-gray-500">
+                        {uploading ? "Uploading to Cloudinary..." : "Click to upload a new hero image"}
+                      </p>
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={(e) => handleImageUpload(e, "hero")} 
+                      disabled={uploading} 
+                    />
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* SIZE GUIDE IMAGE SECTION */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold font-serif border-b pb-2">Size Guide Chart</h2>
+              
+              <div>
+                <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">
+                  Size Guide Picture (Uploads to Cloudinary)
+                </label>
+                
+                {config.sizeGuideImage && (
+                  <div className="relative mb-4 h-56 w-full max-w-lg overflow-hidden rounded border border-gray-200 bg-gray-50">
+                    <Image src={config.sizeGuideImage} alt="Size Guide Preview" fill className="object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => setConfig(prev => ({ ...prev, sizeGuideImage: "" }))}
+                      className="absolute right-2 top-2 rounded-full bg-white p-1 text-red-500 shadow hover:bg-gray-100"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-center w-full max-w-lg">
+                  <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100">
+                    <div className="flex flex-col items-center justify-center pb-6 pt-5">
+                      <UploadCloud className="mb-2 text-gray-500" size={24} />
+                      <p className="text-sm text-gray-500">
+                        {uploading ? "Uploading to Cloudinary..." : "Click to upload Size Guide Picture"}
+                      </p>
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={(e) => handleImageUpload(e, "sizeGuide")} 
+                      disabled={uploading} 
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b pb-2">

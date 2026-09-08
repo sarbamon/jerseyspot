@@ -212,12 +212,13 @@ export async function restoreProduct(id: string) {
   return response.json();
 }
 
-export async function uploadImages(files: FileList) {
+export async function uploadImages(files: FileList | File[]) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
   const formData = new FormData();
   
-  for (let i = 0; i < files.length; i++) {
-    formData.append("images", files[i]);
+  const fileArray = Array.from(files);
+  for (let i = 0; i < fileArray.length; i++) {
+    formData.append("images", fileArray[i]);
   }
 
   const response = await fetch(`${API_URL}/upload`, {
@@ -704,5 +705,25 @@ export async function validateCoupon(code: string) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || "Invalid coupon code");
   }
+  return response.json();
+}
+
+export async function updateUserProfile(profileData: any) {
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('jerseyspot-token') || localStorage.getItem('jerseyspot-admin-token')) : null;
+
+  const response = await fetch(`${API_URL}/auth/profile`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(profileData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update profile");
+  }
+
   return response.json();
 }

@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, TableProperties } from "lucide-react";
 import { getProducts } from "@/lib/api";
 import AdminProductTable from "@/components/admin/AdminProductTable";
-import BulkUploadButton from "@/components/admin/BulkUploadButton";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +46,14 @@ export default async function AdminProductsPage({
           </Link>
         </div>
 
-        <div className="flex items-center gap-4">
-          <BulkUploadButton />
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/admin/products/bulk"
+            className="flex items-center justify-center gap-2 rounded border border-black bg-white px-5 py-3 text-sm font-bold tracking-wide text-black transition-colors hover:bg-gray-100"
+          >
+            <TableProperties size={18} />
+            BULK FORM
+          </Link>
           <Link
             href="/admin/products/new"
             className="flex items-center justify-center gap-2 rounded bg-black px-6 py-3 text-sm font-bold tracking-wide text-[#f4c84a] transition-colors hover:bg-gray-900"

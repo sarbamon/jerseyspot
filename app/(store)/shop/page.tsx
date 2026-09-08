@@ -58,11 +58,13 @@ export default async function ShopPage({
   let products = [];
   let totalPages = 1;
   let currentPage = 1;
+  let totalProducts = 0;
   try {
     const data = await getProducts(queryStr);
     products = data.products || [];
     totalPages = data.pages || 1;
     currentPage = data.page || 1;
+    totalProducts = data.total || products.length;
   } catch (error) {
     console.error("Shop fetch error:", error);
   }
@@ -89,7 +91,9 @@ export default async function ShopPage({
         <div className="w-full">
             <div className="mb-6 flex items-center justify-between">
               <p className="text-sm text-gray-500">
-                {products.length} {products.length === 1 ? "product" : "products"} found
+                {totalProducts > products.length 
+                  ? `Showing ${products.length} of ${totalProducts} products` 
+                  : `${products.length} ${products.length === 1 ? "product" : "products"} found`}
               </p>
             </div>
 

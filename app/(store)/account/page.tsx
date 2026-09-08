@@ -2,7 +2,7 @@
 
 import { useStore } from "@/components/StoreProvider";
 import Link from "next/link";
-import { Package, Heart, Ticket, Headset, Zap } from "lucide-react";
+import { Package, Heart, Ticket, Headset, MapPin } from "lucide-react";
 import Image from "next/image";
 import Script from "next/script";
 import { useEffect, useState } from "react";
@@ -55,7 +55,7 @@ export default function AccountDashboard() {
 
       {/* QUICK LINKS GRID */}
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Link href="/orders" className="flex flex-col items-center justify-center gap-3 border border-gray-200 bg-white p-6 shadow-sm hover:border-black transition text-black">
             <Package size={28} strokeWidth={1.5} />
             <span className="font-bold text-sm tracking-wide">Orders</span>
@@ -64,6 +64,11 @@ export default function AccountDashboard() {
           <Link href="/wishlist" className="flex flex-col items-center justify-center gap-3 border border-gray-200 bg-white p-6 shadow-sm hover:border-black transition text-black">
             <Heart size={28} strokeWidth={1.5} />
             <span className="font-bold text-sm tracking-wide">Wishlist</span>
+          </Link>
+
+          <Link href="/account/address" className="flex flex-col items-center justify-center gap-3 border border-gray-200 bg-white p-6 shadow-sm hover:border-black transition text-black">
+            <MapPin size={28} strokeWidth={1.5} />
+            <span className="font-bold text-sm tracking-wide">Address</span>
           </Link>
           
           <Link href="/coupons" className="flex flex-col items-center justify-center gap-3 border border-gray-200 bg-white p-6 shadow-sm hover:border-black transition text-black">

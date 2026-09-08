@@ -1,13 +1,13 @@
 "use client";
 
 import { Heart, Share2, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   StoreProduct,
   useStore,
 } from "./StoreProvider";
-import { checkPincode as checkPincodeICarry } from "@/lib/api";
+import { checkPincode as checkPincodeICarry, getSiteConfig } from "@/lib/api";
 
 export default function ProductActions({
   product,
@@ -32,7 +32,22 @@ export default function ProductActions({
     return typeof first === "object" ? first.size : first;
   });
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const [sizeGuideImg, setSizeGuideImg] = useState("/images/size-guide.jpg");
   const [pincode, setPincode] = useState("");
+
+  useEffect(() => {
+    async function loadGuide() {
+      try {
+        const configData = await getSiteConfig();
+        if (configData?.config?.sizeGuideImage) {
+          setSizeGuideImg(configData.config.sizeGuideImage);
+        }
+      } catch (err) {
+        console.error("Failed to load size guide image", err);
+      }
+    }
+    loadGuide();
+  }, []);
   const [pinMessage, setPinMessage] = useState("");
   const [pinStatus, setPinStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
@@ -266,7 +281,7 @@ export default function ProductActions({
             </button>
             <h3 className="mb-4 font-serif text-2xl font-bold">Size Guide</h3>
             <div className="overflow-hidden border border-gray-200">
-               <img src="/images/size-guide.jpg" alt="Size Guide" className="w-full" onError={(e) => {
+               <img src={sizeGuideImg} alt="Size Guide" className="w-full" onError={(e) => {
                  e.currentTarget.style.display = 'none';
                  document.getElementById('size-table-fallback')?.classList.remove('hidden');
                }} />

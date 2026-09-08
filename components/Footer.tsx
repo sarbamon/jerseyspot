@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Mail } from "lucide-react";
 
 const InstagramIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
@@ -47,7 +46,7 @@ export default function Footer({ categories = [] }: { categories?: { name: strin
           </div>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-4">
           <h3 className="mb-6 font-serif text-sm font-bold tracking-[0.2em] text-white">
             INFORMATION
           </h3>
@@ -60,7 +59,7 @@ export default function Footer({ categories = [] }: { categories?: { name: strin
           </div>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-4">
           <h3 className="mb-6 font-serif text-sm font-bold tracking-[0.2em] text-white">
             SHOP
           </h3>
@@ -71,37 +70,6 @@ export default function Footer({ categories = [] }: { categories?: { name: strin
                 {cat.name}
               </Link>
             ))}
-          </div>
-        </div>
-
-        <div className="lg:col-span-4">
-          <h3 className="mb-6 font-serif text-sm font-bold tracking-[0.2em] text-white">
-            CONTACT US
-          </h3>
-
-          <div className="flex flex-col gap-5">
-            <div className="flex items-start gap-4">
-              <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1a1a1a] text-[#f4c84a]">
-                <Mail size={14} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Email</p>
-                <p className="font-serif text-[15px] text-gray-300">support@jerseyspot.online</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1a1a1a] text-[#f4c84a]">
-                <MapPin size={14} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Location</p>
-                <p className="font-serif text-[15px] leading-6 text-gray-300">
-                  Gurugram, GURGAON, HARYANA,<br />
-                  122002
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 
