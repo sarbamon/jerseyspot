@@ -165,10 +165,25 @@ export default function BulkProductsPage() {
         if (row.sizesStr) {
           const parts = row.sizesStr.split(/[,|;]+/).map((s) => s.trim());
           for (const part of parts) {
-            const match = part.match(/^([a-zA-Z0-9]+)\s*[:=\-]?\s*(\d+)$/);
-            if (match) {
-              const size = match[1].toUpperCase();
-              const stock = parseInt(match[2], 10);
+            if (!part) continue;
+            // 1. Check explicit delimiter e.g. "S: 10", "S-10", "S 10"
+            let size = "";
+            let stock = 0;
+            const delimitedMatch = part.match(/^([a-zA-Z0-9\s]+?)\s*[:=\-\s]\s*(\d+)$/);
+            const concatMatch = part.match(/^(\d*[a-zA-Z]+)(\d+)$/);
+
+            if (delimitedMatch) {
+              size = delimitedMatch[1].trim().toUpperCase();
+              stock = parseInt(delimitedMatch[2], 10);
+            } else if (concatMatch) {
+              size = concatMatch[1].trim().toUpperCase();
+              stock = parseInt(concatMatch[2], 10);
+            } else if (/^[a-zA-Z0-9\s]+$/.test(part)) {
+              size = part.toUpperCase();
+              stock = 10;
+            }
+
+            if (size && !isNaN(stock)) {
               sizesArr.push({ size, stock });
               totalStock += stock;
             }
