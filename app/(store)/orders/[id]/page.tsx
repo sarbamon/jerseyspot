@@ -88,7 +88,7 @@ export default function OrderDetailsPage() {
 
       if (orderData.order) {
         setOrder(orderData.order);
-        if (orderData.order.shipmentId) {
+        if (orderData.order.shipmentId || orderData.order.trackingNumber) {
           import('@/lib/api').then(m => m.getOrderTracking(orderId))
             .then(res => {
               if (res.tracking) setTrackingData(res.tracking);
@@ -323,6 +323,28 @@ export default function OrderDetailsPage() {
                     );
                   })}
                 </>
+              ) : order.trackingNumber ? (
+                <div className="space-y-1">
+                  <span className="block font-bold text-black text-xs">Tracking Details:</span>
+                  <div className="text-gray-700">
+                    <span className="font-semibold">Courier:</span> {order.courierName || trackingData?.courierName || "Standard Shipping"}
+                  </div>
+                  <div className="text-gray-700 font-mono">
+                    <span className="font-semibold font-sans">Tracking ID / AWB:</span> {order.trackingNumber}
+                  </div>
+                  {(order.trackingUrl || trackingData?.trackingUrl) && (
+                    <div className="pt-1">
+                      <a
+                        href={order.trackingUrl || trackingData?.trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 underline hover:text-blue-800"
+                      >
+                        Track Package directly on Courier Site ↗
+                      </a>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p>Delivery Executive details will be available once your order is picked up by our delivery partner. The estimated delivery date will be updated based on the courier partner's tracking.</p>
               )}

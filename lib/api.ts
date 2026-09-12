@@ -598,6 +598,49 @@ export const getOrderTracking = async (orderId: string) => {
   return res.json();
 };
 
+export const updateOrderTracking = async (
+  orderId: string,
+  data: { trackingNumber: string; courierName?: string; trackingUrl?: string }
+) => {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token");
+  }
+
+  const res = await fetch(`${API_URL}/orders/${orderId}/tracking`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update tracking details");
+  }
+  return res.json();
+};
+
+export const deleteOrderTracking = async (orderId: string) => {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token");
+  }
+
+  const res = await fetch(`${API_URL}/orders/${orderId}/tracking`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete tracking details");
+  }
+  return res.json();
+};
+
 export const checkPincode = async (pincode: string) => {
   const res = await fetch(`${API_URL}/orders/check-pincode?pincode=${pincode}`);
   if (!res.ok) {

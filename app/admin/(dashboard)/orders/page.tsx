@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder, fetchICarryPickupAddresses } from "@/lib/api";
+import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder, fetchICarryPickupAddresses, updateOrderTracking, deleteOrderTracking } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { Trash2, Search, CheckSquare } from "lucide-react";
 
@@ -18,6 +18,15 @@ export default function AdminOrdersPage() {
   const [trackingModalOrder, setTrackingModalOrder] = useState<any>(null);
   const [trackingData, setTrackingData] = useState<any>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
+
+  // Manual Tracking Modal State
+  const [manualTrackingOrder, setManualTrackingOrder] = useState<any>(null);
+  const [manualTrackingDetails, setManualTrackingDetails] = useState({
+    trackingNumber: "",
+    courierName: "",
+    trackingUrl: "",
+  });
+  const [manualTrackingSaving, setManualTrackingSaving] = useState(false);
 
   // iCarry Booking Modal State
   const [bookingModalOrder, setBookingModalOrder] = useState<any>(null);
@@ -148,6 +157,85 @@ export default function AdminOrdersPage() {
       alert(e.message || "Failed to fetch tracking");
     } finally {
       setTrackingLoading(false);
+    }
+  };
+
+  const openManualTrackingModal = (order: any) => {
+    setManualTrackingOrder(order);
+    setManualTrackingDetails({
+      trackingNumber: order.trackingNumber || "",
+      courierName: order.courierName || "",
+      trackingUrl: order.trackingUrl || "",
+    });
+  };
+
+  const handleSaveManualTracking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualTrackingOrder) return;
+    if (!manualTrackingDetails.trackingNumber.trim()) {
+      alert("Tracking Number is required.");
+      return;
+    }
+
+    try {
+      setManualTrackingSaving(true);
+      const res = await updateOrderTracking(manualTrackingOrder._id, {
+        trackingNumber: manualTrackingDetails.trackingNumber.trim(),
+        courierName: manualTrackingDetails.courierName.trim(),
+        trackingUrl: manualTrackingDetails.trackingUrl.trim(),
+      });
+
+      alert("Tracking details saved successfully!");
+      
+      setOrders((prevOrders: any) =>
+        prevOrders.map((o: any) => {
+          if (o._id === manualTrackingOrder._id) {
+            return {
+              ...o,
+              trackingNumber: manualTrackingDetails.trackingNumber.trim(),
+              courierName: manualTrackingDetails.courierName.trim() || "Manual Courier",
+              trackingUrl: manualTrackingDetails.trackingUrl.trim() || undefined,
+              deliveryStatus: res.order?.deliveryStatus || o.deliveryStatus,
+            };
+          }
+          return o;
+        })
+      );
+
+      setManualTrackingOrder(null);
+    } catch (err: any) {
+      console.error("Failed to save manual tracking:", err);
+      alert(err.message || "Failed to update tracking details");
+    } finally {
+      setManualTrackingSaving(false);
+    }
+  };
+
+  const handleDeleteTracking = async (orderId: string) => {
+    if (!window.confirm("Are you sure you want to delete tracking information for this order? This will clear the tracking number and allow you to re-book or re-enter tracking.")) {
+      return;
+    }
+
+    try {
+      await deleteOrderTracking(orderId);
+      alert("Tracking information deleted successfully!");
+      setOrders((prevOrders: any) =>
+        prevOrders.map((o: any) => {
+          if (o._id === orderId) {
+            return {
+              ...o,
+              trackingNumber: undefined,
+              courierName: undefined,
+              shipmentId: undefined,
+              trackingUrl: undefined,
+            };
+          }
+          return o;
+        })
+      );
+    } catch (err: any) {
+      console.error("Failed to delete tracking:", err);
+      alert(err.message || "Failed to delete tracking details");
     }
   };
 
@@ -667,23 +755,58 @@ export default function AdminOrdersPage() {
                         {order.trackingNumber ? (
                           <div>
                             <div className="font-mono text-xs font-bold text-black">{order.trackingNumber}</div>
-                            <div className="text-[10px] uppercase text-gray-500">{order.courierName || "N/A"}</div>
-                            <button
-                              onClick={() => openTrackingModal(order._id)}
-                              className="mt-2 text-[10px] font-bold text-blue-600 hover:underline"
-                            >
-                              VIEW TRACKING
-                            </button>
+                            <div className="text-[10px] uppercase font-semibold text-gray-500">{order.courierName || "N/A"}</div>
+                            {order.trackingUrl && (
+                              <a
+                                href={order.trackingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1 block text-[10px] font-semibold text-blue-600 hover:underline truncate max-w-[130px]"
+                                title={order.trackingUrl}
+                              >
+                                🔗 Track Link
+                              </a>
+                            )}
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
+                              <button
+                                onClick={() => openTrackingModal(order._id)}
+                                className="text-blue-600 hover:underline"
+                              >
+                                VIEW
+                              </button>
+                              <span className="text-gray-300">|</span>
+                              <button
+                                onClick={() => openManualTrackingModal(order)}
+                                className="text-amber-700 hover:underline"
+                              >
+                                EDIT
+                              </button>
+                              <span className="text-gray-300">|</span>
+                              <button
+                                onClick={() => handleDeleteTracking(order._id)}
+                                className="text-red-600 hover:underline"
+                              >
+                                DELETE
+                              </button>
+                            </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs text-gray-400">Not Booked</span>
-                            <button
-                              onClick={() => openBookingModal(order)}
-                              className="w-fit rounded border border-black px-2 py-1 text-[10px] font-bold tracking-wider text-black transition-colors hover:bg-black hover:text-[#f4c84a]"
-                            >
-                              BOOK VIA iCARRY
-                            </button>
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-xs text-gray-400 font-medium">Not Booked</span>
+                            <div className="flex flex-col gap-1 items-start">
+                              <button
+                                onClick={() => openBookingModal(order)}
+                                className="rounded border border-black px-2 py-0.5 text-[10px] font-bold tracking-wider text-black transition-colors hover:bg-black hover:text-[#f4c84a]"
+                              >
+                                BOOK VIA iCARRY
+                              </button>
+                              <button
+                                onClick={() => openManualTrackingModal(order)}
+                                className="rounded border border-gray-300 bg-gray-50 px-2 py-0.5 text-[10px] font-bold tracking-wider text-gray-700 transition-colors hover:bg-gray-200 hover:text-black"
+                              >
+                                + ADD MANUALLY
+                              </button>
+                            </div>
                           </div>
                         )}
                       </td>
@@ -939,6 +1062,95 @@ export default function AdminOrdersPage() {
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                   ) : (
                     "Confirm Booking"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Tracking Modal */}
+      {manualTrackingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="text-base font-bold text-black uppercase tracking-wider">
+                  {manualTrackingOrder.trackingNumber ? "Edit Tracking Info" : "Add Tracking Manually"}
+                </h3>
+                <p className="text-xs text-gray-500 font-mono">Order #{manualTrackingOrder._id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManualTrackingOrder(null)}
+                className="text-gray-400 hover:text-black font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveManualTracking} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Tracking / AWB Number *
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. 1234567890 or AWB98765"
+                  value={manualTrackingDetails.trackingNumber}
+                  onChange={(e) => setManualTrackingDetails({ ...manualTrackingDetails, trackingNumber: e.target.value })}
+                  className="w-full rounded border border-gray-300 p-2 text-sm font-mono outline-none focus:border-black"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Courier Partner Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. BlueDart, DTDC, Delhivery, Speed Post"
+                  value={manualTrackingDetails.courierName}
+                  onChange={(e) => setManualTrackingDetails({ ...manualTrackingDetails, courierName: e.target.value })}
+                  className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Direct Tracking URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://www.bluedart.com/tracking?id=..."
+                  value={manualTrackingDetails.trackingUrl}
+                  onChange={(e) => setManualTrackingDetails({ ...manualTrackingDetails, trackingUrl: e.target.value })}
+                  className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black"
+                />
+                <p className="mt-1 text-[10px] text-gray-400">
+                  Customer can click this link on their order tracking page.
+                </p>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2 border-t pt-4">
+                <button
+                  type="button"
+                  onClick={() => setManualTrackingOrder(null)}
+                  className="px-4 py-2 border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={manualTrackingSaving}
+                  className="px-4 py-2 bg-black text-white rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center min-w-[120px] hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                >
+                  {manualTrackingSaving ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  ) : (
+                    "Save Details"
                   )}
                 </button>
               </div>
