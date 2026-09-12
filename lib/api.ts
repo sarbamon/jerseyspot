@@ -394,7 +394,7 @@ export async function getMyOrderById(id: string, noCache = false) {
   return response.json();
 }
 
-export async function updateDeliveryStatus(orderId: string, status: string, otp?: string) {
+export async function updateDeliveryStatus(orderId: string, status: string, otp?: string, cancelReason?: string) {
   let token = null;
   if (typeof window !== 'undefined') {
     token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
@@ -406,7 +406,7 @@ export async function updateDeliveryStatus(orderId: string, status: string, otp?
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
-    body: JSON.stringify({ status, otp }),
+    body: JSON.stringify({ status, otp, cancelReason }),
   });
 
   if (!response.ok) {
@@ -414,6 +414,17 @@ export async function updateDeliveryStatus(orderId: string, status: string, otp?
     throw new Error(error.message || "Failed to update order status");
   }
 
+  return response.json();
+}
+
+export async function fetchICarryPickupAddresses() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+  const response = await fetch(`${API_URL}/orders/icarry-pickup-addresses`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  });
+  if (!response.ok) return { success: false, pickupAddresses: [] };
   return response.json();
 }
 
@@ -524,7 +535,7 @@ export async function deleteOrder(id: string) {
   return response.json();
 }
 
-export async function cancelOrder(id: string) {
+export async function cancelOrder(id: string, cancelReason?: string) {
   let token = null;
   if (typeof window !== 'undefined') {
     token = localStorage.getItem("jerseyspot-admin-token") || localStorage.getItem("jerseyspot-token");
@@ -533,8 +544,10 @@ export async function cancelOrder(id: string) {
   const response = await fetch(`${API_URL}/orders/${id}/cancel`, {
     method: "PUT",
     headers: {
+      "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
+    body: JSON.stringify({ cancelReason }),
   });
 
   if (!response.ok) {

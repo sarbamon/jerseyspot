@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder } from "@/lib/api";
+import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder, fetchICarryPickupAddresses } from "@/lib/api";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { Trash2, Search, CheckSquare } from "lucide-react";
 
 export default function AdminOrdersPage() {
@@ -36,7 +37,7 @@ export default function AdminOrdersPage() {
     contents: "Jersey",
     mode: "Surface",
     courier_id: "",
-    origin_pincode: "400001",
+    origin_pincode: "",
     pickupAddressId: "",
     returnAddressId: "",
     rtoAddressId: ""
@@ -87,12 +88,48 @@ export default function AdminOrdersPage() {
 
   const fetchConfig = async () => {
     try {
-      const data = await getSiteConfig(true);
-      if (data.config && data.config.pickupPoints) {
-        setPickupPoints(data.config.pickupPoints);
+      const [configData, icarryRes] = await Promise.all([
+        getSiteConfig(true).catch(() => ({})),
+        fetchICarryPickupAddresses().catch(() => ({}))
+      ]);
+
+      let pts = configData?.config?.pickupPoints || [];
+
+      if (icarryRes && icarryRes.pickupAddresses) {
+        let liveList: any[] = [];
+        if (Array.isArray(icarryRes.pickupAddresses)) {
+          liveList = icarryRes.pickupAddresses;
+        } else if (typeof icarryRes.pickupAddresses === 'object') {
+          liveList = Object.values(icarryRes.pickupAddresses);
+        }
+
+        if (liveList.length > 0) {
+          pts = pts.map((pt: any) => {
+            const matched = liveList.find(
+              (live: any) =>
+                String(live.id || live.pickup_address_id || live.warehouse_id || "") === String(pt.icarryId) ||
+                (live.name && pt.name && live.name.toLowerCase().trim() === pt.name.toLowerCase().trim())
+            );
+            const livePincode = matched?.pincode || matched?.pickup_pincode || matched?.zip || matched?.pin || matched?.postal_code || "";
+            return {
+              ...pt,
+              pincode: pt.pincode || livePincode
+            };
+          });
+
+          if (pts.length === 0 && liveList.length > 0) {
+            pts = liveList.map((live: any) => ({
+              name: live.name || live.address_name || `Address #${live.id || live.pickup_address_id}`,
+              icarryId: String(live.id || live.pickup_address_id || live.warehouse_id || ""),
+              pincode: live.pincode || live.pickup_pincode || live.zip || live.pin || live.postal_code || ""
+            }));
+          }
+        }
       }
+
+      setPickupPoints(pts);
     } catch (e) {
-      console.error(e);
+      console.error("Failed to load config or pickup addresses:", e);
     }
   };
 
@@ -130,19 +167,27 @@ export default function AdminOrdersPage() {
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
       let otp = undefined;
+      let cancelReason = undefined;
+
       if (newStatus === "Delivered") {
         otp = window.prompt("Enter the 4-digit Delivery OTP provided by the user:");
         if (otp === null) return; // Cancelled
+      } else if (newStatus === "Cancelled") {
+        const inputReason = window.prompt("Enter Cancellation Reason (will be shown to customer):");
+        if (inputReason === null) return; // Cancelled prompt
+        cancelReason = inputReason;
       }
 
-      await updateDeliveryStatus(orderId, newStatus, otp);
+      await updateDeliveryStatus(orderId, newStatus, otp, cancelReason);
       setOrders((prevOrders: any) => 
         prevOrders.map((o: any) => {
           if (o._id === orderId) {
             return {
               ...o,
               deliveryStatus: newStatus,
-              isDelivered: newStatus === "Delivered"
+              isDelivered: newStatus === "Delivered",
+              isCancelled: newStatus === "Cancelled",
+              cancelReason: newStatus === "Cancelled" ? cancelReason : ""
             };
           }
           return o;
@@ -163,9 +208,13 @@ export default function AdminOrdersPage() {
     let contentsStr = order.orderItems?.map((item: any) => `${item.quantity}x ${item.name}`).join(", ") || "";
     if (contentsStr.length > 250) contentsStr = contentsStr.substring(0, 250);
 
+    const initialPickupId = selectedPickup[order._id] || (pickupPoints.length > 0 ? pickupPoints[0].icarryId : "");
+    const matchingPt = pickupPoints.find((pt: any) => pt.icarryId === initialPickupId);
+    const defaultPincode = matchingPt?.pincode || matchingPt?.name?.match(/\b\d{6}\b/)?.[0] || pickupPoints[0]?.pincode || "";
+
     setBookingDetails({
       contactName: `${order.shippingAddress?.firstName || ""} ${order.shippingAddress?.lastName || ""}`.trim(),
-      mobile: order.shippingAddress?.phoneNumber?.replace(/[^0-9]/g, "").slice(-10) || "",
+      mobile: (order.shippingAddress?.phoneNumber || "").replace(/[^0-9]/g, "").slice(-10),
       streetAddress: order.shippingAddress?.houseOrBuilding 
         ? `${order.shippingAddress?.houseOrBuilding}, ${order.shippingAddress?.roadAreaColony}${order.shippingAddress?.landmark ? `, ${order.shippingAddress?.landmark}` : ""}`
         : (order.shippingAddress?.streetAddress || ""),
@@ -181,12 +230,84 @@ export default function AdminOrdersPage() {
       contents: "Jersey",
       mode: "Surface",
       courier_id: "",
-      origin_pincode: "400001",
-      pickupAddressId: selectedPickup[order._id] || (pickupPoints.length > 0 ? pickupPoints[0].icarryId : ""),
+      origin_pincode: defaultPincode,
+      pickupAddressId: initialPickupId,
       returnAddressId: "", // Same as pickup
       rtoAddressId: "" // Same as pickup
     });
     setCouriers([]);
+
+    if (initialPickupId) {
+      autoFetchPincodeForPickupAddress(initialPickupId);
+    }
+  };
+
+  const autoFetchPincodeForPickupAddress = async (selectedId: string) => {
+    if (!selectedId) return;
+
+    // 1. Check local pickupPoints state first
+    const localPt = pickupPoints.find(
+      (p: any) => String(p.icarryId) === String(selectedId) || p.name === selectedId || String(p._id) === String(selectedId)
+    );
+    let foundPincode = localPt?.pincode || localPt?.name?.match(/\b\d{6}\b/)?.[0] || "";
+
+    if (foundPincode) {
+      setBookingDetails((prev) => ({
+        ...prev,
+        pickupAddressId: selectedId,
+        origin_pincode: foundPincode,
+      }));
+    }
+
+    // 2. Fetch live addresses from iCarry API to get exact pincode
+    try {
+      const res = await fetchICarryPickupAddresses();
+      if (res && res.pickupAddresses) {
+        let liveList: any[] = [];
+        if (Array.isArray(res.pickupAddresses)) {
+          liveList = res.pickupAddresses;
+        } else if (typeof res.pickupAddresses === 'object') {
+          liveList = Object.values(res.pickupAddresses);
+        }
+
+        const matched = liveList.find(
+          (live: any) =>
+            String(live.id || live.pickup_address_id || live.warehouse_id || "") === String(selectedId) ||
+            (live.name && selectedId && live.name.toLowerCase().trim() === selectedId.toLowerCase().trim()) ||
+            (live.address_name && selectedId && live.address_name.toLowerCase().trim() === selectedId.toLowerCase().trim())
+        );
+
+        if (matched) {
+          const livePincode =
+            matched.pincode ||
+            matched.pickup_pincode ||
+            matched.zip ||
+            matched.pin ||
+            matched.postal_code ||
+            (typeof matched.address === "string" ? matched.address.match(/\b\d{6}\b/)?.[0] : "") ||
+            "";
+
+          if (livePincode) {
+            setBookingDetails((prev) => ({
+              ...prev,
+              pickupAddressId: selectedId,
+              origin_pincode: livePincode,
+            }));
+
+            // Update local pickupPoints cache
+            setPickupPoints((prev) =>
+              prev.map((pt: any) =>
+                String(pt.icarryId) === String(selectedId) || pt.name === selectedId
+                  ? { ...pt, pincode: livePincode }
+                  : pt
+              )
+            );
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Auto-fetch pincode error:", err);
+    }
   };
 
   const handleGetRates = async () => {
@@ -266,8 +387,11 @@ export default function AdminOrdersPage() {
   const handleCancelOrder = async (orderId: string) => {
     if (!window.confirm("Are you sure you want to cancel this order? Stock will be restored.")) return;
     
+    const reason = window.prompt("Enter Cancellation Reason (will be shown to customer):");
+    if (reason === null) return;
+
     try {
-      await cancelOrder(orderId);
+      await cancelOrder(orderId, reason);
       alert("Order cancelled successfully");
       fetchOrders();
     } catch (error: any) {
@@ -355,7 +479,7 @@ export default function AdminOrdersPage() {
       const query = searchQuery.toLowerCase();
       const idMatch = order._id.toLowerCase().includes(query);
       const nameMatch = `${order.shippingAddress?.firstName || ""} ${order.shippingAddress?.lastName || ""}`.toLowerCase().includes(query);
-      const dateMatch = new Date(order.createdAt).toLocaleDateString().includes(query);
+      const dateMatch = formatDate(order.createdAt).includes(query);
       
       if (!idMatch && !nameMatch && !dateMatch) return false;
     }
@@ -419,7 +543,9 @@ export default function AdminOrdersPage() {
               className="rounded border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 outline-none focus:border-black"
             >
               <option value="">Change Status...</option>
-              <option value="Processing">Processing</option>
+              <option value="Order Received">Order Received</option>
+              <option value="Order Confirmed & Ready to Ship">Order Confirmed & Ready to Ship</option>
+              <option value="Order Picked Up by Delivery Partner">Order Picked Up by Delivery Partner</option>
               <option value="In Transit">In Transit</option>
               <option value="Near You">Near You</option>
               <option value="Out for Delivery">Out for Delivery</option>
@@ -497,7 +623,7 @@ export default function AdminOrdersPage() {
                         {order._id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {formatDate(order.createdAt)}
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-black">{order.shippingAddress?.firstName} {order.shippingAddress?.lastName}</div>
@@ -563,11 +689,13 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <select
-                          value={order.deliveryStatus || (order.isDelivered ? "Delivered" : "Processing")}
+                          value={order.deliveryStatus || (order.isDelivered ? "Delivered" : "Order Received")}
                           onChange={(e) => handleStatusChange(order._id, e.target.value)}
                           className="rounded border border-gray-300 px-2 py-1 text-xs font-bold text-gray-700 outline-none focus:border-black"
                         >
-                          <option value="Processing">Processing</option>
+                          <option value="Order Received">Order Received</option>
+                          <option value="Order Confirmed & Ready to Ship">Order Confirmed & Ready to Ship</option>
+                          <option value="Order Picked Up by Delivery Partner">Order Picked Up by Delivery Partner</option>
                           <option value="In Transit">In Transit</option>
                           <option value="Near You">Near You</option>
                           <option value="Out for Delivery">Out for Delivery</option>
@@ -631,7 +759,7 @@ export default function AdminOrdersPage() {
                     {trackingData.details && trackingData.details.map((event: any, idx: number) => (
                       <div key={idx} className="relative">
                         <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-black border-2 border-white"></div>
-                        <p className="text-xs font-bold text-gray-500">{new Date(event.datetime).toLocaleString()}</p>
+                        <p className="text-xs font-bold text-gray-500">{formatDateTime(event.datetime)}</p>
                         <p className="text-sm font-bold text-black">{event.location}</p>
                         <p className="text-sm text-gray-600">{event.notes}</p>
                       </div>
@@ -667,10 +795,24 @@ export default function AdminOrdersPage() {
                 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-orange-600 mb-1">Pickup Address *</label>
-                  <select required value={bookingDetails.pickupAddressId} onChange={e => setBookingDetails({...bookingDetails, pickupAddressId: e.target.value})} className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black">
+                  <select
+                    required
+                    value={bookingDetails.pickupAddressId}
+                    onChange={e => {
+                      const selectedId = e.target.value;
+                      setBookingDetails(prev => ({
+                        ...prev,
+                        pickupAddressId: selectedId
+                      }));
+                      autoFetchPincodeForPickupAddress(selectedId);
+                    }}
+                    className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:border-black"
+                  >
                     <option value="" disabled>Select Pickup Address</option>
                     {pickupPoints.map((pt: any) => (
-                      <option key={pt.icarryId} value={pt.icarryId}>{pt.name}</option>
+                      <option key={pt.icarryId} value={pt.icarryId}>
+                        {pt.name}{pt.pincode ? ` (${pt.pincode})` : ""}
+                      </option>
                     ))}
                   </select>
                 </div>

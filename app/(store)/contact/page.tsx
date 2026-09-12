@@ -1,13 +1,35 @@
-import { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Contact Us",
-  description: "Get in touch with Jersey Spot. We're here to help with your orders and answer any questions about our premium football jerseys.",
-};
+import { useState } from "react";
 
 export default function ContactPage() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firstName || !email || !orderNumber || !message) {
+      alert("Please fill in all required fields including your Order Number.");
+      return;
+    }
+
+    const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999999999";
+    const text = 
+      `*New Contact Message from Jersey Spot*\n\n` +
+      `*Name:* ${firstName} ${lastName}\n` +
+      `*Email:* ${email}\n` +
+      (orderNumber ? `*Order Number:* #${orderNumber}\n` : "") +
+      `*Message:* ${message}`;
+
+    const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
+
   return (
-    <main className="min-h-screen bg-white px-5 py-12 text-black sm:px-8 lg:px-12">
+    <main className="min-h-screen bg-white px-5 py-12 text-black sm:px-8 lg:px-12 font-sans">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-4 text-center font-serif text-4xl font-bold uppercase tracking-wider text-black">
           Contact Us
@@ -18,27 +40,12 @@ export default function ContactPage() {
 
         <div className="grid gap-12 lg:grid-cols-2">
           {/* CONTACT INFO */}
-          <div className="bg-gray-50 p-8 border border-gray-200">
+          <div className="bg-gray-50 p-8 border border-gray-200 h-fit">
             <h2 className="mb-6 font-serif text-2xl font-bold uppercase tracking-wider text-black">
               Get In Touch
             </h2>
             
             <div className="space-y-6">
-
-
-              <div>
-                <h3 className="mb-1 text-xs font-bold text-gray-500 uppercase tracking-widest">Email Support</h3>
-                <p className="font-serif text-lg text-black">support@jerseyspot.online</p>
-              </div>
-
-              <div>
-                <h3 className="mb-1 text-xs font-bold text-gray-500 uppercase tracking-widest">Store Location</h3>
-                <p className="font-serif text-lg text-black leading-relaxed">
-                  Gurugram, GURGAON, HARYANA,<br />
-                  122002, India
-                </p>
-              </div>
-
               <div>
                 <h3 className="mb-1 text-xs font-bold text-gray-500 uppercase tracking-widest">Business Hours</h3>
                 <p className="font-serif text-lg text-black leading-relaxed">
@@ -51,15 +58,17 @@ export default function ContactPage() {
 
           {/* CONTACT FORM */}
           <div>
-            <form className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid gap-6 sm:grid-cols-2">
                 <div>
                   <label htmlFor="firstName" className="mb-2 block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    First Name
+                    First Name *
                   </label>
                   <input
                     type="text"
                     id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                     className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none"
                     required
                   />
@@ -71,19 +80,22 @@ export default function ContactPage() {
                   <input
                     type="text"
                     id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
                     className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none"
-                    required
                   />
                 </div>
               </div>
 
               <div>
                 <label htmlFor="email" className="mb-2 block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Email Address
+                  Email Address *
                 </label>
                 <input
                   type="email"
                   id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none"
                   required
                 />
@@ -91,30 +103,35 @@ export default function ContactPage() {
 
               <div>
                 <label htmlFor="orderNumber" className="mb-2 block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Order Number (Optional)
+                  Order Number *
                 </label>
                 <input
                   type="text"
                   id="orderNumber"
+                  value={orderNumber}
+                  onChange={(e) => setOrderNumber(e.target.value)}
                   className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none"
+                  required
                 />
               </div>
 
               <div>
                 <label htmlFor="message" className="mb-2 block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Message
+                  Message *
                 </label>
                 <textarea
                   id="message"
                   rows={5}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
                   className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none resize-none"
                   required
                 ></textarea>
               </div>
 
               <button
-                type="button"
-                className="w-full bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-900"
+                type="submit"
+                className="w-full bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-900 flex items-center justify-center gap-2"
               >
                 Send Message
               </button>

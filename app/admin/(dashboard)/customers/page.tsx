@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getUsers } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 
 export default function AdminCustomersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -57,7 +58,7 @@ export default function AdminCustomersPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-gray-500">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {formatDate(user.createdAt)}
                   </td>
                 </tr>
               ))}

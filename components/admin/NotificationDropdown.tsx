@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, TouchEvent } from "react";
 import { Bell, ShoppingBag, X, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { formatDateTime } from "@/lib/utils";
 
 interface Order {
   _id: string;
@@ -93,7 +94,7 @@ function NotificationItem({
               ordered {displayName}
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              {formatDateTime(order.createdAt)}
             </p>
           </div>
         </Link>

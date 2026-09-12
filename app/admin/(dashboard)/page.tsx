@@ -2,6 +2,7 @@
 
 import { Package, ShoppingCart, IndianRupee, Users } from "lucide-react";
 import { getProducts, getOrders, getUsers } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 export default function AdminDashboardPage() {
@@ -127,14 +128,17 @@ export default function AdminDashboardPage() {
                       <tr key={order._id} className="transition-colors hover:bg-gray-50">
                         <td className="px-6 py-4 font-bold text-black font-mono text-xs">{order._id}</td>
                         <td className="px-6 py-4">{order.shippingAddress?.firstName} {order.shippingAddress?.lastName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{new Date(order.createdAt).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{formatDate(order.createdAt)}</td>
                         <td className="px-6 py-4">
                           <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                            order.deliveryStatus === 'Processing' ? 'bg-yellow-100 text-yellow-800' :
-                            (order.deliveryStatus === 'In Transit' || order.deliveryStatus === 'Out for Delivery' || order.deliveryStatus === 'Near You') ? 'bg-blue-100 text-blue-800' :
-                            'bg-green-100 text-green-800'
+                            (order.deliveryStatus === 'Order Received' || order.deliveryStatus === 'Processing' || order.deliveryStatus === 'Placed') ? 'bg-amber-100 text-amber-800' :
+                            (order.deliveryStatus === 'Order Confirmed & Ready to Ship' || order.deliveryStatus === 'Order Confirmed & Placed') ? 'bg-purple-100 text-purple-800' :
+                            (order.deliveryStatus === 'Order Picked Up by Delivery Partner' || order.deliveryStatus === 'In Transit' || order.deliveryStatus === 'Near You' || order.deliveryStatus === 'Out for Delivery') ? 'bg-blue-100 text-blue-800' :
+                            order.deliveryStatus === 'Delivered' ? 'bg-green-100 text-green-800' :
+                            order.deliveryStatus === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
                           }`}>
-                            {order.deliveryStatus || 'Processing'}
+                            {order.deliveryStatus || 'Order Received'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right font-bold text-black">₹{order.totalPrice.toLocaleString("en-IN")}</td>

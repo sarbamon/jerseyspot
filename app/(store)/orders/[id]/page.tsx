@@ -12,7 +12,8 @@ export default function OrderDetailsPage() {
   const orderId = params.id as string;
 
   const [order, setOrder] = useState<any>(null);
-  const [ad, setAd] = useState<any>(null);
+  const [adsList, setAdsList] = useState<any[]>([]);
+  const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [trackingData, setTrackingData] = useState<any>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,49 @@ export default function OrderDetailsPage() {
   const [openDelivery, setOpenDelivery] = useState(false);
   const [openPrice, setOpenPrice] = useState(false);
   const { isInitialized, isAuthenticated, showLoginModal } = useStore();
+
+  const formatTrackingDate = (rawDate: any) => {
+    if (!rawDate) return "";
+    const str = String(rawDate).trim();
+    if (!str || str.toLowerCase() === "invalid date" || str.toLowerCase() === "null" || str.toLowerCase() === "undefined") {
+      return "";
+    }
+
+    // 1. Standard JS Date attempt
+    let d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // 2. Try replacing space with 'T' (e.g. "2026-09-12 14:30:00")
+    d = new Date(str.replace(" ", "T"));
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // 3. Try parsing DD-MM-YYYY or DD/MM/YYYY
+    const parts = str.split(/[\s\-:\/]+/);
+    if (parts.length >= 3) {
+      let [p1, p2, p3, h = "00", m = "00"] = parts;
+      if (p1.length === 2 && p3.length === 4) {
+        d = new Date(`${p3}-${p2}-${p1}T${h.padStart(2, '0')}:${m.padStart(2, '0')}:00`);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+      }
+    }
+
+    // Fallback: If it's a raw date/time string from courier API, display raw string instead of "Invalid Date"
+    return str;
+  };
+
+  useEffect(() => {
+    if (adsList.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentAdIndex((prev) => (prev + 1) % adsList.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [adsList]);
 
   useEffect(() => {
     if (isInitialized && !isAuthenticated) {
@@ -39,7 +83,7 @@ export default function OrderDetailsPage() {
       setLoading(true);
       const [orderData, adsData] = await Promise.all([
         getMyOrderById(orderId, true),
-        getAds(true, "orders_bottom")
+        getAds(true)
       ]);
 
       if (orderData.order) {
@@ -52,7 +96,7 @@ export default function OrderDetailsPage() {
             .catch(err => console.error("Tracking fetch error:", err));
         }
       }
-      if (adsData.ads && adsData.ads.length > 0) setAd(adsData.ads[0]);
+      if (adsData.ads && adsData.ads.length > 0) setAdsList(adsData.ads);
 
     } catch (err: any) {
       console.error("Failed to fetch order:", err);
@@ -91,13 +135,31 @@ export default function OrderDetailsPage() {
 
   const mainItem = order.orderItems[0] || {};
 
-  // Status logic
-  const isCancelled = order.isCancelled || order.deliveryStatus === "Cancelled";
-  const isDelivered = order.deliveryStatus === "Delivered" || order.isDelivered;
-  const isShipped = isDelivered || order.deliveryStatus === "In Transit" || order.deliveryStatus === "Out for Delivery" || order.deliveryStatus === "Near You";
-  const isConfirmed = isShipped || order.deliveryStatus === "Processing" || order.deliveryStatus === "Placed" || order.isPaid;
+  // Status logic & 7 Stages Progression
+  const STAGES = [
+    "Order Received",
+    "Order Confirmed & Ready to Ship",
+    "Order Picked Up by Delivery Partner",
+    "In Transit",
+    "Near You",
+    "Out for Delivery",
+    "Delivered"
+  ];
 
-  const currentStep = isDelivered ? 3 : isShipped ? 2 : isConfirmed ? 1 : 0;
+  const currentStatus = order.deliveryStatus || (order.isDelivered ? "Delivered" : "Order Received");
+  const isCancelled = currentStatus === "Cancelled" || order.isCancelled;
+  const isDelivered = currentStatus === "Delivered" || order.isDelivered;
+
+  let currentStageIdx = STAGES.findIndex(
+    (s) => s.toLowerCase() === currentStatus.toLowerCase()
+  );
+  if (currentStageIdx === -1) {
+    if (currentStatus === "Order Confirmed & Placed") currentStageIdx = 1;
+    else if (isDelivered) currentStageIdx = 6;
+    else currentStageIdx = 0;
+  }
+
+  const progressPercent = isCancelled ? 100 : (currentStageIdx / (STAGES.length - 1)) * 100;
 
   return (
     <main className="min-h-screen bg-gray-100 pb-20 text-black font-sans selection:bg-black selection:text-white">
@@ -130,92 +192,159 @@ export default function OrderDetailsPage() {
         </div>
 
         {/* Tracking Card */}
-        <div className="bg-white p-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-lg">
-              {isCancelled ? "Cancelled" : isDelivered ? "Delivered" : isShipped ? "Shipped" : "Placed"}
+            <h2 className="font-bold text-lg text-gray-900">
+              {isCancelled ? "Order Cancelled" : isDelivered ? "Order Delivered" : currentStatus}
             </h2>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400"><path d="m18 15-6-6-6 6" /></svg>
-          </div>
-
-          <div className="text-sm text-gray-600 mb-6 flex items-center justify-between">
             {isCancelled ? (
-              <span className="text-red-600 font-bold">
-                {order.cancelledBy === 'Admin' ? "Cancelled by Agents" : "Cancelled"}
-              </span>
+              <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-200">Cancelled</span>
+            ) : isDelivered ? (
+              <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full border border-green-200">Delivered</span>
             ) : (
-              <span>{order.deliveryStatus || "Placed"}</span>
+              <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full border border-blue-200">{currentStatus}</span>
             )}
-            {!isCancelled && <span className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">On Time</span>}
           </div>
 
-          {/* Progress Bar */}
-          {!isCancelled && (
-            <div className="relative mb-8 px-2">
-            <div className="absolute top-3 left-[22px] right-[22px]">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gray-200 z-0"></div>
-              <div className="absolute top-0 left-0 h-1 bg-green-600 z-0 transition-all duration-500" style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : currentStep === 3 ? '100%' : '0%' }}></div>
+          <div className="text-xs text-gray-600 mb-6 flex items-center justify-between">
+            {isCancelled ? (
+              <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-xs font-medium space-y-1">
+                <div className="flex items-center gap-2 font-bold">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+                  <span>This order was {order.cancelledBy === 'Admin' ? "cancelled by Support." : "cancelled."}</span>
+                </div>
+                {order.cancelReason && (
+                  <p className="pl-6 text-xs text-red-700">
+                    <span className="font-bold">Reason:</span> {order.cancelReason}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <span>Status: <strong className="text-gray-900">{currentStatus}</strong></span>
+              </div>
+            )}
+          </div>
+
+          {/* Horizontal Progress Bar */}
+          <div className="relative mb-6 px-1">
+            <div className="absolute top-2.5 left-[12px] right-[12px]">
+              <div className={`absolute top-0 left-0 w-full h-1 z-0 ${isCancelled ? 'bg-red-200' : 'bg-gray-200'}`}></div>
+              <div 
+                className={`absolute top-0 left-0 h-1 z-0 transition-all duration-500 ${isCancelled ? 'bg-red-600' : 'bg-green-600'}`} 
+                style={{ width: `${progressPercent}%` }}
+              ></div>
             </div>
             
             <div className="relative z-10 flex justify-between">
-              {/* Step 1 */}
-              <div className="flex flex-col items-center">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-green-600 text-white' : 'bg-gray-200 border-2 border-white'}`}>
-                  {currentStep >= 1 && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                </div>
-                <span className="text-[10px] mt-2 text-gray-500 text-center w-20">Order Placed<br/>{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-              </div>
-              
-              {/* Step 2 */}
-              <div className="flex flex-col items-center">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-green-600 text-white' : 'bg-white border-2 border-gray-300'}`}>
-                  {currentStep >= 2 && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                </div>
-                <span className="text-[10px] mt-2 text-gray-500 text-center w-20">Shipped</span>
-              </div>
-              
-              {/* Step 3 */}
-              <div className="flex flex-col items-center">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-green-600 text-white' : 'bg-white border-2 border-gray-300'}`}>
-                  {currentStep >= 3 && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                </div>
-                <span className="text-[10px] mt-2 text-gray-500 text-center w-20">Delivery<br/>{currentStep >= 3 && order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : "Pending"}</span>
-              </div>
+              {STAGES.map((_, idx) => {
+                const isPassed = !isCancelled && idx <= currentStageIdx;
+                const isCurrent = !isCancelled && idx === currentStageIdx;
+                return (
+                  <div key={idx} className="flex flex-col items-center">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${
+                      isCancelled 
+                        ? (idx === currentStageIdx || idx === STAGES.length - 1 ? 'bg-red-600 text-white font-bold' : 'bg-red-100 text-red-400')
+                        : isCurrent
+                          ? 'bg-green-600 text-white font-bold ring-4 ring-green-100 scale-110'
+                          : isPassed
+                            ? 'bg-green-600 text-white'
+                            : 'bg-white border-2 border-gray-300 text-gray-400'
+                    }`}>
+                      {isCancelled && (idx === currentStageIdx || idx === STAGES.length - 1) ? '✕' : isPassed ? '✓' : idx + 1}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          )}
+
+          {/* Vertical Detailed Stages Stepper */}
+          <div className="mt-6 border-t border-gray-100 pt-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Order Status Stages</h3>
+            <div className="space-y-3 pl-1">
+              {STAGES.map((stageName, idx) => {
+                const isPassed = !isCancelled && idx <= currentStageIdx;
+                const isCurrent = !isCancelled && idx === currentStageIdx;
+                
+                return (
+                  <div key={idx} className="flex items-start gap-3 text-xs">
+                    <div className="relative flex flex-col items-center">
+                      <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
+                        isPassed 
+                          ? 'bg-green-600 text-white font-bold' 
+                          : 'bg-gray-100 text-gray-400 border border-gray-300'
+                      }`}>
+                        {isPassed ? '✓' : idx + 1}
+                      </div>
+                      {idx < STAGES.length - 1 && (
+                        <div className={`w-0.5 h-4 my-0.5 ${isPassed && idx < currentStageIdx ? 'bg-green-600' : 'bg-gray-200'}`} />
+                      )}
+                    </div>
+                    <div className="pt-0.5">
+                      <span className={`font-semibold ${isCurrent ? 'text-green-700 font-bold text-sm' : isPassed ? 'text-gray-900' : 'text-gray-400'}`}>
+                        {stageName}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {isCancelled && (
+                <div className="flex items-start gap-3 text-xs pt-1">
+                  <div className="h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold">
+                    ✕
+                  </div>
+                  <div className="pt-0.5">
+                    <span className="font-bold text-red-600 text-sm">Cancelled</span>
+                    <span className="ml-2 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold">Order Cancelled</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 flex gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            <p>
+            <div className="w-full">
               {trackingData && trackingData.details && trackingData.details.length > 0 ? (
                 <>
                   <span className="block font-bold mb-1">Live Updates:</span>
-                  <span className="block mb-2">Courier: {trackingData.courierName} {trackingData.status ? `(${trackingData.status})` : ""}</span>
-                  {trackingData.details.slice(0, 1).map((event: any, idx: number) => (
-                    <span key={idx} className="block mb-1">
-                      <span className="font-semibold">{new Date(event.datetime).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>: {event.notes} ({event.location})
-                    </span>
-                  ))}
+                  <span className="block mb-2 text-gray-700 font-medium">Courier: {trackingData.courierName} {trackingData.status ? `(${trackingData.status})` : ""}</span>
+                  {trackingData.details.slice(0, 1).map((event: any, idx: number) => {
+                    const dateStr = formatTrackingDate(event.datetime || event.date || event.time || event.timestamp);
+                    const notesStr = event.notes || event.status || event.activity || "";
+                    const locationStr = event.location ? ` (${event.location})` : "";
+                    return (
+                      <span key={idx} className="block mb-1">
+                        {dateStr ? <span className="font-semibold text-gray-800">{dateStr}: </span> : null}
+                        <span>{notesStr}{locationStr}</span>
+                      </span>
+                    );
+                  })}
                 </>
               ) : (
-                "Delivery Executive details will be available once the order is out for delivery."
+                <p>Delivery Executive details will be available once your order is picked up by our delivery partner. The estimated delivery date will be updated based on the courier partner's tracking.</p>
               )}
-            </p>
+            </div>
           </div>
           
           {trackingData && trackingData.details && trackingData.details.length > 0 && showAllUpdates ? (
             <div className="mt-4 border-t border-gray-100 pt-4 text-left">
               <h3 className="font-bold text-sm mb-4">Full Tracking History</h3>
               <div className="relative border-l-2 border-gray-200 ml-3 pl-4 space-y-6 mb-4">
-                {trackingData.details.map((event: any, idx: number) => (
-                  <div key={idx} className="relative">
-                    <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-black border-2 border-white"></div>
-                    <p className="text-xs font-bold text-gray-500">{new Date(event.datetime).toLocaleString()}</p>
-                    <p className="text-sm font-bold text-black">{event.location}</p>
-                    <p className="text-sm text-gray-600">{event.notes}</p>
-                  </div>
-                ))}
+                {trackingData.details.map((event: any, idx: number) => {
+                  const dateStr = formatTrackingDate(event.datetime || event.date || event.time || event.timestamp);
+                  const notesStr = event.notes || event.status || event.activity || "";
+                  return (
+                    <div key={idx} className="relative">
+                      <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-black border-2 border-white"></div>
+                      {dateStr ? <p className="text-xs font-bold text-gray-500">{dateStr}</p> : null}
+                      {event.location ? <p className="text-sm font-bold text-black">{event.location}</p> : null}
+                      {notesStr ? <p className="text-sm text-gray-600">{notesStr}</p> : null}
+                    </div>
+                  );
+                })}
               </div>
               <div className="text-center">
                 <button onClick={() => setShowAllUpdates(false)} className="text-blue-600 font-semibold text-sm">Hide updates</button>
@@ -226,16 +355,45 @@ export default function OrderDetailsPage() {
               <button onClick={() => setShowAllUpdates(true)} className="text-blue-600 font-semibold text-sm">See all updates</button>
             </div>
           ) : null}
-        </div>        {/* Bottom Banner */}
-        {ad && (
+        </div>        {/* Bottom Banner Slideshow */}
+        {adsList.length > 0 && (
           <div className="p-4 bg-white">
-            <Link href={ad.link || "#"} className="block relative h-[160px] w-full overflow-hidden rounded-xl bg-black">
-              <img
-                src={ad.imageUrl}
-                alt={ad.name}
-                className="h-full w-full object-cover"
-              />
-            </Link>
+            <div className="relative h-[160px] w-full overflow-hidden rounded-xl bg-black shadow-sm">
+              {/* Ad Label in Top Right Corner */}
+              <div className="absolute top-2 right-2 z-10 bg-black/70 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/20 shadow-sm pointer-events-none uppercase tracking-wider">
+                Ad
+              </div>
+
+              {/* Slides */}
+              {adsList.map((adItem: any, idx: number) => (
+                <Link 
+                  href={adItem.link || "#"} 
+                  key={adItem._id || idx} 
+                  className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${idx === currentAdIndex ? 'opacity-100 z-0' : 'opacity-0 -z-10 pointer-events-none'}`}
+                >
+                  <img 
+                    src={adItem.imageUrl} 
+                    alt={adItem.name || "Ad"} 
+                    className="h-full w-full object-cover"
+                  />
+                </Link>
+              ))}
+
+              {/* Navigation Indicators */}
+              {adsList.length > 1 && (
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+                  {adsList.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentAdIndex(idx)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        idx === currentAdIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

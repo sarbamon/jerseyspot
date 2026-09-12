@@ -11,7 +11,7 @@ export default function AdminSettingsPage() {
     sizeGuideImage: "",
     deliveryCharge: 150,
     categories: [] as { name: string; href: string; image: string }[],
-    pickupPoints: [] as { name: string; icarryId: string }[],
+    pickupPoints: [] as { name: string; icarryId: string; pincode?: string }[],
   });
 
   const [accountData, setAccountData] = useState({
@@ -50,7 +50,7 @@ export default function AdminSettingsPage() {
   const handleAddPickupPoint = () => {
     setConfig((prev) => ({
       ...prev,
-      pickupPoints: [...(prev.pickupPoints || []), { name: "", icarryId: "" }]
+      pickupPoints: [...(prev.pickupPoints || []), { name: "", icarryId: "", pincode: "" }]
     }));
   };
 
@@ -92,7 +92,7 @@ export default function AdminSettingsPage() {
     });
   };
 
-  const handlePickupPointChange = (index: number, field: "name" | "icarryId", value: string) => {
+  const handlePickupPointChange = (index: number, field: "name" | "icarryId" | "pincode", value: string) => {
     setConfig((prev) => {
       const newPoints = [...(prev.pickupPoints || [])];
       newPoints[index] = { ...newPoints[index], [field]: value };
@@ -466,6 +466,16 @@ export default function AdminSettingsPage() {
                         placeholder="e.g. 456"
                         className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none"
                         required
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-bold uppercase text-gray-700">Pickup Pincode</label>
+                      <input
+                        type="text"
+                        value={point.pincode || ""}
+                        onChange={(e) => handlePickupPointChange(index, "pincode", e.target.value)}
+                        placeholder="e.g. 400001"
+                        className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none"
                       />
                     </div>
                   </div>

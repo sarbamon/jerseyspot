@@ -74,19 +74,15 @@ export default function Footer({ categories = [] }: { categories?: { name: strin
             © {new Date().getFullYear()} – Copyright, All Rights reserved. Powered by Akieme Tech
           </p>
 
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">We accept:</span>
-            <div className="flex gap-3">
-              <div className="flex h-8 w-12 items-center justify-center rounded bg-[#1a1a1a] text-xs font-bold text-white border border-[#333] transition-colors hover:border-[#f4c84a]">
-                UPI
-              </div>
-              <div className="flex h-8 w-12 items-center justify-center rounded bg-[#1a1a1a] text-xs font-bold text-[#00b9f1] border border-[#333] transition-colors hover:border-[#00b9f1]">
-                Paytm
-              </div>
-              <div className="flex h-8 w-12 items-center justify-center rounded bg-[#1a1a1a] text-xs font-bold text-white border border-[#333] transition-colors hover:border-white">
-                G Pay
-              </div>
-            </div>
+          <div className="flex items-center gap-2.5 opacity-90 hover:opacity-100 transition-opacity">
+            <span className="text-xs font-medium text-gray-400 tracking-wide">100% Payment Secured by</span>
+            <Image
+              src="/images/razorpay-logo-white.png"
+              alt="Razorpay"
+              width={95}
+              height={20}
+              className="h-5 w-auto object-contain"
+            />
           </div>
 
         </div>

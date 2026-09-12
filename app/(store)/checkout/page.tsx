@@ -7,19 +7,34 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
-import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig, checkPincode } from "@/lib/api";
+import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig, checkPincode, getAds } from "@/lib/api";
 
 export default function CheckoutPage() {
   const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart, user, updateUser } = useStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [adsList, setAdsList] = useState<any[]>([]);
+  const [currentAdIndex, setCurrentAdIndex] = useState(0);
   
   useEffect(() => {
     if (success) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      getAds(true).then((data) => {
+        if (data && data.ads && data.ads.length > 0) {
+          setAdsList(data.ads);
+        }
+      }).catch(err => console.error("Failed to load ads:", err));
     }
   }, [success]);
+
+  useEffect(() => {
+    if (!success || adsList.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentAdIndex((prev) => (prev + 1) % adsList.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [success, adsList]);
 
   // Coupon State
   const [couponCode, setCouponCode] = useState("");
@@ -315,12 +330,12 @@ export default function CheckoutPage() {
           <path className="checkmark-check" fill="none" strokeWidth="4" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
         </svg>
         
-        <div className="fade-in-text flex flex-col items-center">
+        <div className="fade-in-text flex flex-col items-center w-full max-w-md">
           <h1 className="mb-4 font-serif text-4xl font-bold">Order Placed!</h1>
           <p className="mb-8 text-center text-gray-500">
             Thank you for your purchase. Your jerseys will be on their way soon!
           </p>
-          <div className="flex flex-col gap-4 w-full max-w-xs">
+          <div className="flex flex-col gap-4 w-full max-w-xs mb-8">
             <Link href="/shop" className="bg-black px-8 py-4 text-center text-sm font-bold tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-900 w-full">
               CONTINUE SHOPPING
             </Link>
@@ -328,6 +343,48 @@ export default function CheckoutPage() {
               VIEW MY ORDERS
             </Link>
           </div>
+
+          {/* Ad Banner Slideshow after Order Confirmation */}
+          {adsList.length > 0 && (
+            <div className="w-full">
+              <div className="relative h-[160px] w-full overflow-hidden rounded-xl bg-black shadow-sm border border-gray-200">
+                {/* Ad Label in Top Right Corner */}
+                <div className="absolute top-2 right-2 z-10 bg-black/70 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/20 shadow-sm pointer-events-none uppercase tracking-wider">
+                  Ad
+                </div>
+
+                {/* Slides */}
+                {adsList.map((adItem: any, idx: number) => (
+                  <Link 
+                    href={adItem.link || "#"} 
+                    key={adItem._id || idx} 
+                    className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${idx === currentAdIndex ? 'opacity-100 z-0' : 'opacity-0 -z-10 pointer-events-none'}`}
+                  >
+                    <img 
+                      src={adItem.imageUrl} 
+                      alt={adItem.name || "Ad"} 
+                      className="h-full w-full object-cover"
+                    />
+                  </Link>
+                ))}
+
+                {/* Navigation Indicators */}
+                {adsList.length > 1 && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+                    {adsList.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentAdIndex(idx)}
+                        className={`h-1.5 rounded-full transition-all ${
+                          idx === currentAdIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     );
@@ -505,6 +562,16 @@ export default function CheckoutPage() {
               >
                 {loading ? "Processing..." : "Place Order"}
               </button>
+              
+              <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-gray-500 font-medium">
+                <span>100% Secured by</span>
+                <div className="inline-flex items-center gap-1">
+                  <svg width="14" height="15" viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M78.6 0L24.8 62.5H48.4L21.4 110L94.6 42.5H68.4L78.6 0Z" fill="#3395FF"/>
+                  </svg>
+                  <span className="font-black text-gray-900 font-sans tracking-tight">Razorpay</span>
+                </div>
+              </div>
             </div>
           </div>
 

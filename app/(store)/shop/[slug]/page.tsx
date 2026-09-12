@@ -218,7 +218,7 @@ export default async function ProductPage({
 
             <div className="mt-8 border-t border-gray-200 pt-6">
 
-              <div className="grid gap-5 sm:grid-cols-3">
+              <div className="grid gap-5 sm:grid-cols-2">
 
                 <div>
                   <p className="text-sm font-bold">
@@ -237,16 +237,6 @@ export default async function ProductPage({
 
                   <p className="mt-1 text-xs leading-5 text-gray-500">
                     Safe and secure checkout.
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-bold">
-                    QUALITY GUARANTEE
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-gray-500">
-                    Quality jerseys from Jersey Spot.
                   </p>
                 </div>
 

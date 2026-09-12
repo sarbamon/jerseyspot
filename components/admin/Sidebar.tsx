@@ -60,6 +60,11 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         })}
       </nav>
       
+      <div className="border-t border-gray-100 p-4 text-center">
+        <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-[10px] font-bold text-gray-500 tracking-wider uppercase">
+          Jersey Spot v1.5
+        </span>
+      </div>
     </aside>
   );
 }

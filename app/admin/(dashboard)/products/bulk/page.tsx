@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Save, Plus, Trash2, Copy, Upload, Image as ImageIcon, CheckCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Copy, Image as ImageIcon, CheckCircle, RefreshCw, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { createProduct, uploadImages, getSiteConfig } from "@/lib/api";
 
 interface BulkRow {
@@ -14,18 +13,18 @@ interface BulkRow {
   price: string;
   originalPrice: string;
   sizesStr: string;
-  imageFile: File | null;
-  imageUrl: string;
-  uploading?: boolean;
+  imageFiles: File[];
+  imageUrls: string[];
+  uploadedUrls?: string[];
 }
-
-const DEFAULT_SIZES = "S10, M15, L20, XL10";
 
 export default function BulkProductsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Categories state
   const [categories, setCategories] = useState<{ name: string; value: string }[]>([
     { name: "Player Version", value: "player-version" },
     { name: "Fan Version", value: "fan-version" },
@@ -33,15 +32,26 @@ export default function BulkProductsPage() {
     { name: "Sets", value: "sets" },
   ]);
 
-  const createEmptyRow = (defaultCat = "player-version"): BulkRow => ({
+  // Preset States
+  const [presetCategory, setPresetCategory] = useState("player-version");
+  const [presetPrice, setPresetPrice] = useState("1499");
+  const [presetRegPrice, setPresetRegPrice] = useState("1999");
+  const [presetSizesStr, setPresetSizesStr] = useState("S10, M15, L20, XL10");
+
+  const createEmptyRow = (
+    cat = presetCategory,
+    price = presetPrice,
+    regPrice = presetRegPrice,
+    sizes = presetSizesStr
+  ): BulkRow => ({
     id: Math.random().toString(36).substring(2, 9),
     name: "",
-    category: defaultCat,
-    price: "",
-    originalPrice: "",
-    sizesStr: DEFAULT_SIZES,
-    imageFile: null,
-    imageUrl: "",
+    category: cat,
+    price: price,
+    originalPrice: regPrice,
+    sizesStr: sizes,
+    imageFiles: [],
+    imageUrls: [],
   });
 
   const [rows, setRows] = useState<BulkRow[]>([]);
@@ -57,10 +67,12 @@ export default function BulkProductsPage() {
           }));
           if (dynamicCats.length > 0) {
             setCategories(dynamicCats);
+            const firstCat = dynamicCats[0].value;
+            setPresetCategory(firstCat);
             setRows([
-              createEmptyRow(dynamicCats[0].value),
-              createEmptyRow(dynamicCats[0].value),
-              createEmptyRow(dynamicCats[0].value),
+              createEmptyRow(firstCat),
+              createEmptyRow(firstCat),
+              createEmptyRow(firstCat),
             ]);
             return;
           }
@@ -74,8 +86,10 @@ export default function BulkProductsPage() {
   }, []);
 
   const handleAddRow = (count = 1) => {
-    const defaultCat = categories[0]?.value || "player-version";
-    const newRows = Array.from({ length: count }, () => createEmptyRow(defaultCat));
+    const defaultCat = categories[0]?.value || presetCategory;
+    const newRows = Array.from({ length: count }, () =>
+      createEmptyRow(defaultCat, presetPrice, presetRegPrice, presetSizesStr)
+    );
     setRows((prev) => [...prev, ...newRows]);
   };
 
@@ -93,6 +107,8 @@ export default function BulkProductsPage() {
       ...target,
       id: Math.random().toString(36).substring(2, 9),
       name: target.name ? `${target.name} (Copy)` : "",
+      imageFiles: [...target.imageFiles],
+      imageUrls: [...target.imageUrls],
     };
     const nextRows = [...rows];
     nextRows.splice(index + 1, 0, cloned);
@@ -105,21 +121,71 @@ export default function BulkProductsPage() {
     );
   };
 
-  const handleImageSelect = async (id: string, file: File | null) => {
-    if (!file) return;
+  const handleImagesSelect = (id: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const newFiles = Array.from(files);
+    const newUrls = newFiles.map((file) => URL.createObjectURL(file));
 
-    // Show instant local preview
-    const previewUrl = URL.createObjectURL(file);
-    handleRowChange(id, "imageFile", file);
-    handleRowChange(id, "imageUrl", previewUrl);
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          return {
+            ...r,
+            imageFiles: [...r.imageFiles, ...newFiles],
+            imageUrls: [...r.imageUrls, ...newUrls],
+          };
+        }
+        return r;
+      })
+    );
   };
 
+  const handleRemoveImage = (id: string, imgIdx: number) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          const nextFiles = [...r.imageFiles];
+          const nextUrls = [...r.imageUrls];
+          nextFiles.splice(imgIdx, 1);
+          nextUrls.splice(imgIdx, 1);
+          return {
+            ...r,
+            imageFiles: nextFiles,
+            imageUrls: nextUrls,
+          };
+        }
+        return r;
+      })
+    );
+  };
+
+  // Quick Preset Appliers
   const handleApplyCategoryToAll = (categoryValue: string) => {
     setRows((prev) => prev.map((r) => ({ ...r, category: categoryValue })));
   };
 
+  const handleApplyPriceToAll = (priceVal: string) => {
+    setRows((prev) => prev.map((r) => ({ ...r, price: priceVal })));
+  };
+
+  const handleApplyRegPriceToAll = (regPriceVal: string) => {
+    setRows((prev) => prev.map((r) => ({ ...r, originalPrice: regPriceVal })));
+  };
+
   const handleApplySizesToAll = (sizesStr: string) => {
     setRows((prev) => prev.map((r) => ({ ...r, sizesStr })));
+  };
+
+  const handleApplyAllPresets = () => {
+    setRows((prev) =>
+      prev.map((r) => ({
+        ...r,
+        category: presetCategory,
+        price: presetPrice,
+        originalPrice: presetRegPrice,
+        sizesStr: presetSizesStr,
+      }))
+    );
   };
 
   const handleSubmitAll = async (e: React.FormEvent) => {
@@ -142,13 +208,11 @@ export default function BulkProductsPage() {
 
       for (let i = 0; i < updatedRows.length; i++) {
         const row = updatedRows[i];
-        if (row.imageFile) {
+        if (row.imageFiles && row.imageFiles.length > 0) {
           try {
-            const formData = new FormData();
-            formData.append("images", row.imageFile);
-            const uploadRes = await uploadImages([row.imageFile]);
-            if (uploadRes && uploadRes.urls && uploadRes.urls[0]) {
-              row.imageUrl = uploadRes.urls[0];
+            const uploadRes = await uploadImages(row.imageFiles);
+            if (uploadRes && uploadRes.urls && uploadRes.urls.length > 0) {
+              row.uploadedUrls = uploadRes.urls;
             }
           } catch (err) {
             console.error(`Image upload failed for row ${i + 1}:`, err);
@@ -166,7 +230,6 @@ export default function BulkProductsPage() {
           const parts = row.sizesStr.split(/[,|;]+/).map((s) => s.trim());
           for (const part of parts) {
             if (!part) continue;
-            // 1. Check explicit delimiter e.g. "S: 10", "S-10", "S 10"
             let size = "";
             let stock = 0;
             const delimitedMatch = part.match(/^([a-zA-Z0-9\s]+?)\s*[:=\-\s]\s*(\d+)$/);
@@ -190,8 +253,12 @@ export default function BulkProductsPage() {
           }
         }
 
+        // Combine uploaded URLs with non-blob URLs
+        const existingNonBlobUrls = row.imageUrls.filter((u) => !u.startsWith("blob:"));
+        const allUrls = [...(row.uploadedUrls || []), ...existingNonBlobUrls];
         const fallbackImage = "/images/products/placeholder.jpg";
-        const finalImage = row.imageUrl && !row.imageUrl.startsWith("blob:") ? row.imageUrl : fallbackImage;
+        const mainImage = allUrls.length > 0 ? allUrls[0] : fallbackImage;
+        const finalImages = allUrls.length > 0 ? allUrls : [fallbackImage];
 
         return {
           name: row.name.trim(),
@@ -200,8 +267,8 @@ export default function BulkProductsPage() {
           originalPrice: row.originalPrice ? parseFloat(row.originalPrice) : undefined,
           sizes: sizesArr,
           stock: totalStock,
-          image: finalImage,
-          images: [finalImage],
+          image: mainImage,
+          images: finalImages,
           isActive: true,
         };
       });
@@ -274,37 +341,112 @@ export default function BulkProductsPage() {
         </div>
       )}
 
-      {/* GLOBAL QUICK APPLIERS */}
-      <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <p className="mb-3 text-xs font-bold text-gray-600 uppercase tracking-wider">
-          ⚡ Quick Batch Presets (Apply to All Rows)
-        </p>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">Set All Categories:</span>
-            <select
-              className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold focus:outline-none"
-              onChange={(e) => handleApplyCategoryToAll(e.target.value)}
-              defaultValue=""
-            >
-              <option value="" disabled>Select category...</option>
-              {categories.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+      {/* GLOBAL QUICK BATCH PRESETS */}
+      <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm">
+        <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+            ⚡ Quick Batch Presets (Apply to all rows & auto-fill new rows)
+          </p>
+          <button
+            type="button"
+            onClick={handleApplyAllPresets}
+            className="rounded bg-black px-3 py-1.5 text-xs font-bold text-[#f4c84a] hover:bg-gray-800 transition-colors"
+          >
+            APPLY ALL PRESETS TO ALL ROWS
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Category Preset */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Set All Category</label>
+            <div className="flex gap-1.5">
+              <select
+                className="w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold focus:border-black focus:outline-none"
+                value={presetCategory}
+                onChange={(e) => setPresetCategory(e.target.value)}
+              >
+                {categories.map((c) => (
+                  <option key={c.value} value={c.value}>{c.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => handleApplyCategoryToAll(presetCategory)}
+                className="shrink-0 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100"
+                title="Apply to all rows"
+              >
+                Apply
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">Set All Sizes & Stock:</span>
-            <button
-              type="button"
-              onClick={() => handleApplySizesToAll(DEFAULT_SIZES)}
-              className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold hover:bg-gray-100"
-            >
-              Default (S10, M15, L20, XL10)
-            </button>
+          {/* Default Price Preset */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Default Price (₹)</label>
+            <div className="flex gap-1.5">
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="1499"
+                value={presetPrice}
+                onChange={(e) => setPresetPrice(e.target.value)}
+                className="w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold focus:border-black focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                onClick={() => handleApplyPriceToAll(presetPrice)}
+                className="shrink-0 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100"
+                title="Apply to all rows"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+
+          {/* Default Reg. Price Preset */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Default Reg. Price (₹)</label>
+            <div className="flex gap-1.5">
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="1999"
+                value={presetRegPrice}
+                onChange={(e) => setPresetRegPrice(e.target.value)}
+                className="w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold focus:border-black focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                onClick={() => handleApplyRegPriceToAll(presetRegPrice)}
+                className="shrink-0 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100"
+                title="Apply to all rows"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+
+          {/* Default Sizes & Stock Preset */}
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Default Sizes & Stock</label>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                placeholder="S10, M15, L20, XL10"
+                value={presetSizesStr}
+                onChange={(e) => setPresetSizesStr(e.target.value)}
+                className="w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-mono focus:border-black focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => handleApplySizesToAll(presetSizesStr)}
+                className="shrink-0 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-100"
+                title="Apply to all rows"
+              >
+                Apply
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -318,10 +460,10 @@ export default function BulkProductsPage() {
                 <th className="py-3.5 px-3 text-center w-12">#</th>
                 <th className="py-3.5 px-3 min-w-[200px]">Product Name *</th>
                 <th className="py-3.5 px-3 min-w-[150px]">Category *</th>
-                <th className="py-3.5 px-3 w-32">Price (₹) *</th>
-                <th className="py-3.5 px-3 w-32">Reg. Price (₹)</th>
+                <th className="py-3.5 px-3 min-w-[110px]">Price (₹) *</th>
+                <th className="py-3.5 px-3 min-w-[110px]">Reg. Price (₹)</th>
                 <th className="py-3.5 px-3 min-w-[180px]">Sizes & Stock (e.g. S10, M15)</th>
-                <th className="py-3.5 px-3 w-44 text-center">Picture</th>
+                <th className="py-3.5 px-3 min-w-[200px] text-center">Pictures</th>
                 <th className="py-3.5 px-3 w-20 text-center">Actions</th>
               </tr>
             </thead>
@@ -363,27 +505,27 @@ export default function BulkProductsPage() {
                   <td className="py-3 px-3">
                     <input
                       type="number"
+                      inputMode="numeric"
                       placeholder="1499"
                       value={row.price}
                       onChange={(e) => handleRowChange(row.id, "price", e.target.value)}
-                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-bold text-black focus:border-black focus:outline-none"
-                      min="0"
+                      className="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-bold text-black focus:border-black focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </td>
 
-                  {/* ORIGINAL PRICE */}
+                  {/* ORIGINAL REGULAR PRICE */}
                   <td className="py-3 px-3">
                     <input
                       type="number"
+                      inputMode="numeric"
                       placeholder="1999"
                       value={row.originalPrice}
                       onChange={(e) => handleRowChange(row.id, "originalPrice", e.target.value)}
-                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-500 focus:border-black focus:outline-none"
-                      min="0"
+                      className="w-full rounded border border-gray-300 px-2.5 py-2 text-sm text-gray-700 focus:border-black focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </td>
 
-                  {/* SIZES */}
+                  {/* SIZES & STOCK */}
                   <td className="py-3 px-3">
                     <input
                       type="text"
@@ -394,38 +536,47 @@ export default function BulkProductsPage() {
                     />
                   </td>
 
-                  {/* PICTURE */}
+                  {/* PICTURES (MULTIPLE IMAGE SUPPORT) */}
                   <td className="py-3 px-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      {row.imageUrl ? (
-                        <div className="relative h-10 w-10 overflow-hidden rounded border border-gray-300 bg-gray-100">
-                          <img
-                            src={row.imageUrl}
-                            alt="preview"
-                            className="h-full w-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleRowChange(row.id, "imageFile", null);
-                              handleRowChange(row.id, "imageUrl", "");
-                            }}
-                            className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition-opacity hover:opacity-100"
-                            title="Remove picture"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                    <div className="flex flex-col items-center gap-1.5">
+                      {row.imageUrls.length > 0 && (
+                        <div className="flex items-center gap-1.5 overflow-x-auto max-w-[180px] p-1 border rounded bg-gray-50">
+                          {row.imageUrls.map((url, imgIdx) => (
+                            <div
+                              key={imgIdx}
+                              className="relative h-9 w-9 shrink-0 overflow-hidden rounded border border-gray-300 bg-white group"
+                            >
+                              <img
+                                src={url}
+                                alt={`preview ${imgIdx}`}
+                                className="h-full w-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(row.id, imgIdx)}
+                                className="absolute inset-0 flex items-center justify-center bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                title="Remove picture"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ) : null}
+                      )}
 
                       <label className="cursor-pointer rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 flex items-center gap-1">
                         <ImageIcon size={14} />
-                        <span>{row.imageUrl ? "Change" : "Select"}</span>
+                        <span>
+                          {row.imageUrls.length > 0
+                            ? `+ Add (${row.imageUrls.length})`
+                            : "Select Pictures"}
+                        </span>
                         <input
                           type="file"
                           accept="image/*"
+                          multiple
                           className="hidden"
-                          onChange={(e) => handleImageSelect(row.id, e.target.files?.[0] || null)}
+                          onChange={(e) => handleImagesSelect(row.id, e.target.files)}
                         />
                       </label>
                     </div>
