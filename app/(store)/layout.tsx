@@ -11,12 +11,14 @@ export default async function StoreLayout({
 }) {
   let categories: { name: string; href: string }[] = [];
   try {
-    const configData = await getSiteConfig(true);
+    const configData = await getSiteConfig();
     if (configData.config && configData.config.categories) {
       categories = configData.config.categories;
     }
-  } catch (err) {
-    console.error("Failed to load layout categories:", err);
+  } catch (err: any) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE' || err?.name === 'DynamicServerError' || err?.message?.includes('DYNAMIC_SERVER_USAGE')) {
+      throw err;
+    }
   }
 
   // Fallback to defaults if no categories are configured

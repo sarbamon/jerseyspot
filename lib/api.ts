@@ -320,13 +320,14 @@ export async function getSiteConfig(noCache = false) {
     const response = await fetch(`${API_URL}/config/site`, fetchOptions);
     
     if (!response.ok) {
-      console.warn("Failed to fetch site config:", response.status);
       return { config: { deliveryCharge: 150 } };
     }
 
     return await response.json();
-  } catch (error) {
-    console.warn("Error connecting to backend for getSiteConfig:", error);
+  } catch (error: any) {
+    if (error?.digest === 'DYNAMIC_SERVER_USAGE' || error?.name === 'DynamicServerError' || error?.message?.includes('DYNAMIC_SERVER_USAGE')) {
+      throw error;
+    }
     return { config: { deliveryCharge: 150 } };
   }
 }
