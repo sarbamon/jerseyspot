@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder, fetchICarryPickupAddresses, updateOrderTracking, deleteOrderTracking } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { Trash2, Search, CheckSquare } from "lucide-react";
+import { Trash2, Search, CheckSquare, Eye, X, ExternalLink } from "lucide-react";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -18,6 +18,10 @@ export default function AdminOrdersPage() {
   const [trackingModalOrder, setTrackingModalOrder] = useState<any>(null);
   const [trackingData, setTrackingData] = useState<any>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
+
+  // View Products Modal State
+  const [viewProductsModalOrder, setViewProductsModalOrder] = useState<any>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Manual Tracking Modal State
   const [manualTrackingOrder, setManualTrackingOrder] = useState<any>(null);
@@ -728,14 +732,43 @@ export default function AdminOrdersPage() {
                           {order.shippingAddress?.city}, {order.shippingAddress?.postalCode}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-xs text-gray-700">
-                        {order.orderItems?.map((item: any, idx: number) => (
-                          <div key={idx} className="mb-1">
-                            <span className="font-semibold text-black">{item.name}</span>
-                            <br />
-                            <span className="text-[10px] text-gray-500">Size: {item.size} • Qty: {item.quantity}</span>
-                          </div>
-                        ))}
+                      <td className="px-6 py-4 text-xs text-gray-700 min-w-[220px]">
+                        <div className="space-y-2">
+                          {order.orderItems?.map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2.5">
+                              <div 
+                                onClick={() => item.image && setPreviewImage(item.image)}
+                                className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-100 cursor-pointer group"
+                                title="Click to view full photo"
+                              >
+                                <img
+                                  src={item.image || "/placeholder.png"}
+                                  alt={item.name}
+                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).setAttribute("src", "/placeholder.png");
+                                  }}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-black truncate max-w-[160px]" title={item.name}>
+                                  {item.name}
+                                </div>
+                                <div className="text-[10px] text-gray-500">
+                                  Size: <span className="font-bold text-gray-700">{item.size}</span> • Qty: <span className="font-bold text-gray-700">{item.quantity}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          <button
+                            onClick={() => setViewProductsModalOrder(order)}
+                            className="mt-1 flex items-center gap-1.5 rounded border border-gray-300 bg-gray-50 px-2.5 py-1 text-[10px] font-bold text-gray-800 transition-colors hover:bg-black hover:text-white"
+                          >
+                            <Eye size={12} />
+                            <span>View Products ({order.orderItems?.length || 0})</span>
+                          </button>
+                        </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-black">
                         ₹{order.totalPrice.toLocaleString("en-IN")}
@@ -1155,6 +1188,164 @@ export default function AdminOrdersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+     )}
+
+      {/* View Products Modal */}
+      {viewProductsModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl max-h-[90vh] flex flex-col border border-gray-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b pb-4 mb-4">
+              <div>
+                <h2 className="font-serif text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Eye className="text-black" size={22} />
+                  Product Photos & Details
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Order ID: <span className="font-mono font-bold text-black">{viewProductsModalOrder._id}</span> • {formatDate(viewProductsModalOrder.createdAt)}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewProductsModalOrder(null)}
+                className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-black transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Customer Summary Bar */}
+            <div className="mb-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-700 border border-gray-200 flex flex-col sm:flex-row justify-between gap-2">
+              <div>
+                <span className="font-bold text-black">Customer:</span> {viewProductsModalOrder.shippingAddress?.firstName} {viewProductsModalOrder.shippingAddress?.lastName} ({viewProductsModalOrder.shippingAddress?.phoneNumber})
+              </div>
+              <div>
+                <span className="font-bold text-black">Payment:</span> {viewProductsModalOrder.isPaid ? <span className="text-green-700 font-bold">Paid</span> : <span className="text-yellow-700 font-bold">Pending</span>} ({viewProductsModalOrder.paymentMethod})
+              </div>
+            </div>
+
+            {/* Products List */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                Ordered Products ({viewProductsModalOrder.orderItems?.length || 0})
+              </h3>
+              
+              <div className="divide-y divide-gray-100 border rounded-lg overflow-hidden bg-white shadow-sm">
+                {viewProductsModalOrder.orderItems?.map((item: any, idx: number) => {
+                  const itemTotal = (item.price || 0) * (item.quantity || 1);
+                  const productId = item.product?._id || item.product;
+                  
+                  return (
+                    <div key={idx} className="p-4 flex items-center gap-4 hover:bg-gray-50/80 transition-colors">
+                      {/* Photo Thumbnail */}
+                      <div 
+                        onClick={() => item.image && setPreviewImage(item.image)}
+                        className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 cursor-pointer group shadow-sm"
+                        title="Click to view full photo"
+                      >
+                        <img
+                          src={item.image || "/placeholder.png"}
+                          alt={item.name}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          onError={(e) => {
+                            (e.target as HTMLElement).setAttribute("src", "/placeholder.png");
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[11px] font-bold">
+                          Zoom 🔍
+                        </div>
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-bold text-sm text-black">{item.name}</h4>
+                          {productId && (
+                            <a
+                              href={typeof item.product === 'object' && item.product?.slug ? `/shop/${item.product.slug}` : `/shop?search=${encodeURIComponent(item.name)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 text-[11px] text-blue-600 hover:underline inline-flex items-center gap-1 font-bold border border-blue-200 bg-blue-50 px-2 py-1 rounded"
+                              title="View Product Page on Store"
+                            >
+                              <ExternalLink size={12} /> View Product
+                            </a>
+                          )}
+                        </div>
+                        
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                          <span className="rounded bg-gray-100 px-2 py-0.5 font-bold text-gray-800 border border-gray-200">
+                            Size: {item.size}
+                          </span>
+                          <span className="rounded bg-gray-100 px-2 py-0.5 font-bold text-gray-800 border border-gray-200">
+                            Qty: {item.quantity}
+                          </span>
+                          <span className="text-gray-500 font-medium">
+                            Unit Price: ₹{(item.price || 0).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Subtotal */}
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] uppercase font-bold text-gray-400">Total</div>
+                        <div className="font-bold text-black text-sm">
+                          ₹{itemTotal.toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Summary Footer */}
+            <div className="mt-4 border-t pt-4 flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                Total Items: <span className="font-bold text-black">{viewProductsModalOrder.orderItems?.reduce((acc: number, curr: any) => acc + (curr.quantity || 1), 0)} units</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-gray-500 mr-2">Order Total:</span>
+                <span className="font-serif text-lg font-bold text-black">
+                  ₹{(viewProductsModalOrder.totalPrice || 0).toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+            
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setViewProductsModalOrder(null)}
+                className="rounded-lg bg-black px-5 py-2 text-xs font-bold text-white uppercase tracking-wider hover:bg-gray-800 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Image Preview / Lightbox Modal */}
+      {previewImage && (
+        <div 
+          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 cursor-pointer"
+        >
+          <div className="relative max-w-3xl max-h-[85vh] p-2 bg-white rounded-lg shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-3 right-3 z-10 rounded-full bg-black/70 p-1.5 text-white hover:bg-black transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <img
+              src={previewImage}
+              alt="Product Photo Preview"
+              className="max-h-[80vh] w-auto max-w-full object-contain rounded"
+              onError={(e) => {
+                (e.target as HTMLElement).setAttribute("src", "/placeholder.png");
+              }}
+            />
           </div>
         </div>
       )}
