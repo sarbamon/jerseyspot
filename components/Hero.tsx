@@ -24,7 +24,7 @@ export default function Hero({ image, images, title }: HeroProps) {
     images && images.length > 0
       ? images
       : image
-      ? [image, ...defaultSlides.filter((img) => img !== image)]
+      ? [image]
       : defaultSlides;
 
   const [currentIndex, setCurrentIndex] = useState(0);

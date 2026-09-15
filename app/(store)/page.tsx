@@ -14,14 +14,14 @@ export default async function Home() {
   const products = data.products;
 
   let siteConfig: any = {
-    heroImage: "/images/hero1.jpg",
-    heroImages: ["/images/hero1.jpg", "/images/hero.jpg", "/images/banners/customized.jpg", "/images/banners/promo.jpg"],
+    heroImage: "",
+    heroImages: [],
     heroTitle: "JERSEY SPOT",
     heroSubtitle: "PREMIUM JERSEYS FOR EVERY FAN"
   };
   try {
     const configData = await getSiteConfig(true);
-    if (configData.config) {
+    if (configData && configData.config) {
       siteConfig = configData.config;
     }
   } catch (error) {
