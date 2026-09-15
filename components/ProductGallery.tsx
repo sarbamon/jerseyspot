@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useCallback, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, ChevronLeft, ChevronRight, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 
 export default function ProductGallery({
   images,
@@ -17,29 +17,9 @@ export default function ProductGallery({
   const [mainIdx, setMainIdx] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState(0);
-
-  // Zoom states
-  const [isHovered, setIsHovered] = useState(false);
-  const [isMobileZoom, setIsMobileZoom] = useState(false);
-  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [lightboxZoom, setLightboxZoom] = useState(1);
 
   const mainImage = validImages[mainIdx];
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - left) / width) * 100));
-    const y = Math.max(0, Math.min(100, ((e.clientY - top) / height) * 100));
-    setZoomPos({ x, y });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!e.touches || !e.touches[0]) return;
-    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.touches[0].clientX - left) / width) * 100));
-    const y = Math.max(0, Math.min(100, ((e.touches[0].clientY - top) / height) * 100));
-    setZoomPos({ x, y });
-  };
 
   const openLightbox = (idx: number) => {
     setLightboxIdx(idx);
@@ -82,40 +62,25 @@ export default function ProductGallery({
     };
   }, [lightbox]);
 
-  const isZooming = isHovered || isMobileZoom;
-
   return (
     <>
       {/* ── GALLERY ── */}
       <div className="flex flex-col gap-4">
-        {/* Main image container with modern rounded corners & Interactive Magnifier */}
-        <div
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => {
-            setIsHovered(false);
-            setIsMobileZoom(false);
-          }}
-          onMouseMove={handleMouseMove}
-          onTouchStart={() => setIsMobileZoom((prev) => !prev)}
-          onTouchMove={handleTouchMove}
-          className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 shadow-sm cursor-zoom-in group select-none"
+        {/* Main image container with modern rounded corners */}
+        <button
+          type="button"
+          onClick={() => openLightbox(mainIdx)}
+          className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 shadow-sm group select-none cursor-pointer"
+          aria-label="Open full-screen image view"
         >
-          <div
-            className="relative h-full w-full transition-transform duration-200 ease-out"
-            style={{
-              transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-              transform: isZooming ? "scale(2.2)" : "scale(1)",
-            }}
-          >
-            <Image
-              src={mainImage}
-              alt={name}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-          </div>
+          <Image
+            src={mainImage}
+            alt={name}
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
 
           {/* Discount Badge */}
           {discount > 0 && (
@@ -124,31 +89,11 @@ export default function ProductGallery({
             </span>
           )}
 
-          {/* Controls Overlay */}
-          <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMobileZoom((prev) => !prev);
-              }}
-              className="flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md shadow-md hover:bg-black transition"
-            >
-              <ZoomIn size={14} /> {isMobileZoom ? "Reset Zoom" : "Hover / Tap Zoom"}
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openLightbox(mainIdx);
-              }}
-              className="flex items-center justify-center rounded-full bg-black/70 p-2 text-white backdrop-blur-md shadow-md hover:bg-black transition"
-              aria-label="Expand image"
-            >
-              <Maximize2 size={14} />
-            </button>
+          {/* Expand Overlay Hint */}
+          <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md shadow-md opacity-90 group-hover:opacity-100 transition">
+            <Maximize2 size={13} /> Expand
           </div>
-        </div>
+        </button>
 
         {/* Thumbnails with rounded-xl */}
         {validImages.length > 1 && (
@@ -157,10 +102,7 @@ export default function ProductGallery({
               <button
                 key={idx}
                 type="button"
-                onClick={() => {
-                  setMainIdx(idx);
-                  setIsMobileZoom(false);
-                }}
+                onClick={() => setMainIdx(idx)}
                 className={`relative aspect-[3/4] overflow-hidden rounded-xl border bg-gray-50 transition-all duration-300 ${
                   mainIdx === idx
                     ? "border-black ring-2 ring-black ring-offset-2 scale-[1.02]"
