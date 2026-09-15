@@ -112,18 +112,30 @@ export default function AdminSettingsPage() {
     setAccountSaving(true);
     try {
       const dataToUpdate: any = {};
-      if (accountData.email) dataToUpdate.email = accountData.email;
-      if (accountData.password) {
-        dataToUpdate.oldPassword = accountData.oldPassword;
-        dataToUpdate.password = accountData.password;
+      const token = localStorage.getItem("jerseyspot-admin-token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: accountData.email || undefined,
+          oldPassword: accountData.oldPassword || undefined,
+          password: accountData.password || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to update profile");
       }
-      
-      await updateAdminProfile(dataToUpdate);
-      alert("Admin credentials updated successfully! You may need to log in again.");
+
+      alert("Admin credentials updated successfully!");
       setAccountData({ email: "", oldPassword: "", password: "" });
     } catch (error: any) {
       console.error("Failed to update credentials:", error);
-      alert(error.message || "Failed to update credentials.");
+      alert(error.message || "Failed to update credentials");
     } finally {
       setAccountSaving(false);
     }
@@ -137,7 +149,14 @@ export default function AdminSettingsPage() {
       const data = await uploadImages(e.target.files);
       if (data.urls && data.urls.length > 0) {
         if (type === "hero") {
-          setConfig((prev) => ({ ...prev, heroImage: data.urls[0] }));
+          setConfig((prev) => {
+            const updatedHeroList = [...(prev.heroImages || []), ...data.urls];
+            return {
+              ...prev,
+              heroImages: updatedHeroList,
+              heroImage: updatedHeroList[0] || prev.heroImage
+            };
+          });
         } else if (type === "sizeGuide") {
           setConfig((prev) => ({ ...prev, sizeGuideImage: data.urls[0] }));
         } else {
@@ -258,19 +277,26 @@ export default function AdminSettingsPage() {
             
               <div>
                 <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">
-                  Hero Background Image
+                  Hero Background Slider Images
                 </label>
                 
-                {config.heroImage && (
-                  <div className="relative mb-4 h-48 w-full max-w-lg overflow-hidden rounded border border-gray-200">
-                    <Image src={config.heroImage} alt="Hero Preview" fill className="object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setConfig(prev => ({ ...prev, heroImage: "" }))}
-                      className="absolute right-2 top-2 rounded-full bg-white p-1 text-red-500 shadow hover:bg-gray-100"
-                    >
-                      <X size={16} />
-                    </button>
+                {config.heroImages && config.heroImages.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {config.heroImages.map((img, idx) => (
+                      <div key={idx} className="relative h-32 w-full overflow-hidden rounded border border-gray-200 group">
+                        <Image src={img} alt={`Hero ${idx + 1}`} fill className="object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setConfig(prev => {
+                            const newImages = prev.heroImages.filter((_, i) => i !== idx);
+                            return { ...prev, heroImages: newImages, heroImage: newImages[0] || "" };
+                          })}
+                          className="absolute right-2 top-2 rounded-full bg-white p-1 text-red-500 shadow hover:bg-gray-100"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -279,13 +305,14 @@ export default function AdminSettingsPage() {
                     <div className="flex flex-col items-center justify-center pb-6 pt-5">
                       <UploadCloud className="mb-2 text-gray-500" size={24} />
                       <p className="text-sm text-gray-500">
-                        {uploading ? "Uploading to Cloudinary..." : "Click to upload a new hero image"}
+                        {uploading ? "Uploading to Cloudinary..." : "Click to add hero slider images"}
                       </p>
                     </div>
                     <input 
                       type="file" 
                       className="hidden" 
                       accept="image/*" 
+                      multiple
                       onChange={(e) => handleImageUpload(e, "hero")} 
                       disabled={uploading} 
                     />

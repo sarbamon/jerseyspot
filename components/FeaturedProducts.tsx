@@ -11,6 +11,9 @@ type Product = {
   originalPrice?: number;
   image: string;
   team: string;
+  category?: string;
+  stock: number;
+  sizes?: { size: string; stock: number }[];
   featured: boolean;
 };
 
@@ -47,57 +50,82 @@ export default async function FeaturedProducts() {
 
         {/* PRODUCTS */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 lg:gap-6">
-          {products.map((product) => (
-            <Link
-              key={product._id}
-              href={`/shop/${product.slug}`}
-              className="group"
-            >
-              {/* IMAGE */}
-              <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  className="object-cover transition duration-500 group-hover:scale-105"
-                />
+          {products.map((product) => {
+            const isOutOfStock =
+              product.stock <= 0 ||
+              (product.sizes &&
+                product.sizes.length > 0 &&
+                product.sizes.every((s: any) => s.stock <= 0));
 
-                {product.originalPrice &&
-                  product.originalPrice > product.price && (
-                    <span className="absolute left-2 top-2 bg-black px-2 py-1 text-[10px] font-bold tracking-wider text-[#f4c84a]">
-                      SALE
+            return (
+              <Link
+                key={product._id}
+                href={`/shop/${product.slug}`}
+                className="group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-gray-300 hover:shadow-md"
+              >
+                {/* TOP ROW: Category & Out of Stock */}
+                <div className="mb-3 flex items-center justify-between min-h-[24px]">
+                  <div className="border border-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black rounded-sm">
+                    {product.category
+                      ? product.category.replace("-version", "").replace("-", " ")
+                      : "JERSEY"}
+                  </div>
+                  {isOutOfStock ? (
+                    <span className="rounded bg-red-100 border border-red-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700">
+                      OUT OF STOCK
                     </span>
-                  )}
-                
-                <ProductWishlistButton product={product as any} />
-              </div>
-
-              {/* DETAILS */}
-              <div className="pt-4">
-                <p className="mb-1 text-xs uppercase tracking-wider text-gray-500">
-                  {product.team}
-                </p>
-
-                <h3 className="line-clamp-2 font-serif text-sm font-bold text-black sm:text-base">
-                  {product.name}
-                </h3>
-
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-sm font-bold text-black">
-                    ₹{product.price.toLocaleString("en-IN")}
-                  </span>
-
-                  {product.originalPrice &&
-                    product.originalPrice > product.price && (
-                      <span className="text-xs text-gray-400 line-through">
-                        ₹{product.originalPrice.toLocaleString("en-IN")}
-                      </span>
-                    )}
+                  ) : null}
                 </div>
-              </div>
-            </Link>
-          ))}
+
+                {/* IMAGE */}
+                <div className="relative mb-4 flex w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-gray-50/50 p-2">
+                  <div className="relative w-full max-w-[160px] aspect-[4/5] sm:max-w-[200px]">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      className={`object-cover transition duration-500 group-hover:scale-105 ${
+                        isOutOfStock ? "opacity-75" : ""
+                      }`}
+                    />
+                    <ProductWishlistButton product={product as any} />
+                  </div>
+                </div>
+
+                {/* BOTTOM ROW: Title & Price Brought Down */}
+                <div className="mt-auto space-y-1">
+                  <h3 className="line-clamp-2 font-serif text-[13px] font-bold uppercase leading-tight text-black sm:text-sm">
+                    {product.name}
+                  </h3>
+                  {product.team ? (
+                    <p className="text-[9px] uppercase tracking-widest text-gray-400 sm:text-[10px]">
+                      {product.team}
+                    </p>
+                  ) : product.createdAt &&
+                    Date.now() - new Date(product.createdAt).getTime() <
+                      7 * 24 * 60 * 60 * 1000 ? (
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-amber-600 sm:text-[10px]">
+                      NEW
+                    </p>
+                  ) : null}
+
+                  {/* PRICE MOVED TO BOTTOM */}
+                  <div className="mt-2 flex items-center gap-2 pt-1 border-t border-gray-100">
+                    <span className="text-base font-black text-black">
+                      ₹{product.price.toLocaleString("en-IN")}
+                    </span>
+                    {product.originalPrice &&
+                      product.originalPrice > product.price && (
+                        <span className="text-xs text-gray-400 line-through">
+                          ₹{product.originalPrice.toLocaleString("en-IN")}
+                        </span>
+                      )}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
         {/* MOBILE VIEW ALL */}

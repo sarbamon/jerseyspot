@@ -105,9 +105,17 @@ export default async function SearchPage({
                     <h3 className="line-clamp-2 font-serif text-[13px] font-bold uppercase leading-tight text-black sm:text-sm">
                       {product.name}
                     </h3>
-                    <p className="mt-2 text-[9px] uppercase tracking-widest text-gray-400 sm:text-[10px]">
-                      {product.team || "NEW"}
-                    </p>
+                    {product.team ? (
+                      <p className="text-[9px] uppercase tracking-widest text-gray-400 sm:text-[10px]">
+                        {product.team}
+                      </p>
+                    ) : product.createdAt &&
+                      Date.now() - new Date(product.createdAt).getTime() <
+                        7 * 24 * 60 * 60 * 1000 ? (
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-amber-600 sm:text-[10px]">
+                        NEW
+                      </p>
+                    ) : null}
                   </div>
                 </Link>
               ))}

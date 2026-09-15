@@ -13,8 +13,9 @@ export default async function Home() {
   const data = await getProducts("", true);
   const products = data.products;
 
-  let siteConfig = {
-    heroImage: "/images/hero.webp",
+  let siteConfig: any = {
+    heroImage: "/images/hero1.jpg",
+    heroImages: ["/images/hero1.jpg", "/images/hero.jpg", "/images/banners/customized.jpg", "/images/banners/promo.jpg"],
     heroTitle: "JERSEY SPOT",
     heroSubtitle: "PREMIUM JERSEYS FOR EVERY FAN"
   };
@@ -30,7 +31,8 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-black">
       <Hero 
-        image={siteConfig.heroImage} 
+        image={siteConfig.heroImage}
+        images={siteConfig.heroImages} 
         title={siteConfig.heroTitle} 
         subtitle={siteConfig.heroSubtitle} 
       />
