@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Trash2, Plus, Minus } from "lucide-react";
 import { useStore } from "@/components/StoreProvider";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -10,7 +10,7 @@ import Script from "next/script";
 import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig, checkPincode, getAds } from "@/lib/api";
 
 export default function CheckoutPage() {
-  const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart, user, updateUser } = useStore();
+  const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart, user, updateUser, updateQuantity, removeFromCart } = useStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -411,54 +411,54 @@ export default function CheckoutPage() {
           Checkout
         </h1>
 
-        <div className="grid gap-12 lg:grid-cols-[1fr_400px]">
+        <div className="grid gap-12 lg:grid-cols-[1fr_420px]">
           {/* SHIPPING FORM */}
-          <div>
-            <h2 className="mb-6 font-serif text-xl font-bold border-b pb-2">Shipping Information</h2>
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
+            <h2 className="mb-6 font-serif text-2xl font-bold border-b pb-3">Shipping Information</h2>
             <form id="checkout-form" onSubmit={handlePayment} className="space-y-6">
               <div className="grid gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">First Name</label>
-                  <input type="text" name="firstName" value={shipping.firstName} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">First Name</label>
+                  <input type="text" name="firstName" value={shipping.firstName} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Last Name</label>
-                  <input type="text" name="lastName" value={shipping.lastName} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Last Name</label>
+                  <input type="text" name="lastName" value={shipping.lastName} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Email Address</label>
-                <input type="email" name="email" value={shipping.email} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Email Address</label>
+                <input type="email" name="email" value={shipping.email} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Phone Number</label>
-                <input type="tel" name="phoneNumber" value={shipping.phoneNumber} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Phone Number</label>
+                <input type="tel" name="phoneNumber" value={shipping.phoneNumber} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">House No. / Building Name</label>
-                <input type="text" name="houseOrBuilding" value={shipping.houseOrBuilding} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">House No. / Building Name</label>
+                <input type="text" name="houseOrBuilding" value={shipping.houseOrBuilding} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Street Address</label>
-                <input type="text" name="roadAreaColony" value={shipping.roadAreaColony} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Street Address</label>
+                <input type="text" name="roadAreaColony" value={shipping.roadAreaColony} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Landmark (Optional)</label>
-                <input type="text" name="landmark" value={shipping.landmark} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" />
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Landmark (Optional)</label>
+                <input type="text" name="landmark" value={shipping.landmark} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" />
               </div>
 
               <div className="grid gap-6 sm:grid-cols-3">
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Pincode</label>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Pincode</label>
                   <input type="text" name="postalCode" value={shipping.postalCode} onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, '');
                     setShipping(prev => ({ ...prev, postalCode: val }));
-                  }} maxLength={6} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                  }} maxLength={6} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
                   {checkingPincode && <p className="text-xs text-gray-500 mt-1">Checking serviceability...</p>}
                   {pincodeMessage && !checkingPincode && (
                     <p className={`text-xs mt-1 font-medium ${isServiceable ? 'text-green-600' : 'text-red-600'}`}>
@@ -467,12 +467,12 @@ export default function CheckoutPage() {
                   )}
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">City / District</label>
-                  <input type="text" name="city" value={shipping.city} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">City / District</label>
+                  <input type="text" name="city" value={shipping.city} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">State</label>
-                  <input type="text" name="state" value={shipping.state} onChange={handleChange} className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none" required />
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">State</label>
+                  <input type="text" name="state" value={shipping.state} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
                 </div>
               </div>
             </form>
@@ -480,19 +480,49 @@ export default function CheckoutPage() {
 
           {/* ORDER SUMMARY */}
           <div>
-            <div className="sticky top-24 bg-gray-50 p-6 border border-gray-200">
-              <h2 className="mb-6 font-serif text-xl font-bold">Order Summary</h2>
+            <div className="sticky top-24 rounded-2xl border border-gray-200 bg-gray-50/80 p-6 shadow-sm backdrop-blur-sm">
+              <h2 className="mb-6 font-serif text-xl font-bold border-b border-gray-200 pb-3">Order Summary</h2>
               
-              <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
+              <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1">
                 {cart.map((item) => (
-                  <div key={`${item._id}-${item.size}`} className="flex gap-4">
-                    <div className="relative h-20 w-16 shrink-0 bg-gray-100">
-                      <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
+                  <div key={`${item._id}-${item.size}`} className="flex gap-3 items-center border border-gray-200/80 bg-white p-3 rounded-xl shadow-xs transition hover:border-gray-300">
+                    <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-50 border border-gray-100">
+                      <Image src={item.image} alt={item.name} fill sizes="60px" className="object-cover" />
                     </div>
-                    <div className="flex-1 text-sm">
-                      <p className="font-bold line-clamp-1">{item.name}</p>
-                      <p className="text-gray-500 mt-1">Size: {item.size} × {item.quantity}</p>
-                      <p className="font-bold mt-1">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-1">
+                        <p className="font-bold text-xs text-black truncate">{item.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item._id, item.size)}
+                          className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                          aria-label="Remove item"
+                          title="Remove item"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <p className="text-[11px] font-semibold text-gray-500 mt-0.5">Size: {item.size}</p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item._id, item.size, item.quantity - 1)}
+                            className="flex h-7 w-7 items-center justify-center text-xs font-bold text-gray-700 hover:bg-gray-200 transition"
+                          >
+                            <Minus size={11} />
+                          </button>
+                          <span className="w-7 text-center text-xs font-bold text-black">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item._id, item.size, item.quantity + 1)}
+                            className="flex h-7 w-7 items-center justify-center text-xs font-bold text-gray-700 hover:bg-gray-200 transition"
+                          >
+                            <Plus size={11} />
+                          </button>
+                        </div>
+                        <p className="font-bold text-xs text-black">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -508,13 +538,13 @@ export default function CheckoutPage() {
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                     disabled={!!appliedCoupon}
                     placeholder="Enter code"
-                    className="flex-1 border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                    className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
                   />
                   {appliedCoupon ? (
                     <button
                       type="button"
                       onClick={handleRemoveCoupon}
-                      className="bg-gray-200 px-6 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300"
+                      className="rounded-xl bg-gray-200 px-6 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300"
                     >
                       REMOVE
                     </button>
@@ -523,7 +553,7 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={handleApplyCoupon}
                       disabled={applyingCoupon || !couponCode}
-                      className="bg-black px-6 py-3 text-sm font-bold text-[#f4c84a] transition-colors hover:bg-gray-900 disabled:opacity-50"
+                      className="rounded-xl bg-black px-6 py-3 text-sm font-bold text-[#f4c84a] shadow-sm transition-colors hover:bg-gray-900 disabled:opacity-50"
                     >
                       {applyingCoupon ? "..." : "APPLY"}
                     </button>
@@ -558,7 +588,7 @@ export default function CheckoutPage() {
                 form="checkout-form"
                 type="submit"
                 disabled={loading || isServiceable === false || checkingPincode}
-                className={`mt-8 w-full px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] transition-colors ${(loading || isServiceable === false || checkingPincode) ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-900'}`}
+                className={`mt-8 w-full rounded-xl px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] shadow-lg transition-all ${(loading || isServiceable === false || checkingPincode) ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-900 active:scale-[0.99]'}`}
               >
                 {loading ? "Processing..." : "Place Order"}
               </button>
