@@ -430,7 +430,7 @@ export default function AdminSettingsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const newCat = [...config.categories];
+                          const newCat = [...(config.categories || [])];
                           newCat[index].image = "";
                           setConfig(prev => ({ ...prev, categories: newCat }));
                         }}
