@@ -58,20 +58,19 @@ export default async function CategorySection() {
         </h2>
       </div>
 
-      {/* Changed to flex-wrap for desktop so it doesn't get cut off, but remains scrollable on mobile if needed, though wrap is usually better for both if items are small. */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {availableCategories.map((category) => (
           <a
             key={category.name}
             href={category.href}
-            className="group relative flex h-32 sm:h-40 w-full items-center justify-center overflow-hidden bg-black p-4 text-white rounded-md shadow-md"
+            className="group relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-md bg-black p-4 text-white shadow-md"
           >
             <Image
               src={category.image}
               alt={category.name}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-              className="object-cover opacity-40 transition duration-500 group-hover:scale-105 group-hover:opacity-60"
+              className="object-cover object-center opacity-40 transition duration-500 group-hover:scale-105 group-hover:opacity-60"
             />
             <div className="relative z-10 text-center">
               <h3 className="text-lg sm:text-xl font-bold tracking-wider drop-shadow-xl text-white">
