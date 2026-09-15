@@ -15,6 +15,7 @@ type Product = {
   stock: number;
   sizes?: { size: string; stock: number }[];
   featured: boolean;
+  createdAt?: string;
 };
 
 export default async function FeaturedProducts() {

@@ -6,8 +6,16 @@ import { UploadCloud, X } from "lucide-react";
 import Image from "next/image";
 
 export default function AdminSettingsPage() {
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<{
+    heroImage?: string;
+    heroImages?: string[];
+    sizeGuideImage?: string;
+    deliveryCharge?: number;
+    categories?: { name: string; href: string; image: string }[];
+    pickupPoints?: { name: string; icarryId: string; pincode?: string }[];
+  }>({
     heroImage: "",
+    heroImages: [],
     sizeGuideImage: "",
     deliveryCharge: 150,
     categories: [] as { name: string; href: string; image: string }[],
@@ -282,13 +290,13 @@ export default function AdminSettingsPage() {
                 
                 {config.heroImages && config.heroImages.length > 0 && (
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    {config.heroImages.map((img, idx) => (
+                    {config.heroImages.map((img: string, idx: number) => (
                       <div key={idx} className="relative h-32 w-full overflow-hidden rounded border border-gray-200 group">
                         <Image src={img} alt={`Hero ${idx + 1}`} fill className="object-cover" />
                         <button
                           type="button"
                           onClick={() => setConfig(prev => {
-                            const newImages = prev.heroImages.filter((_, i) => i !== idx);
+                            const newImages = (prev.heroImages || []).filter((_: string, i: number) => i !== idx);
                             return { ...prev, heroImages: newImages, heroImage: newImages[0] || "" };
                           })}
                           className="absolute right-2 top-2 rounded-full bg-white p-1 text-red-500 shadow hover:bg-gray-100"
