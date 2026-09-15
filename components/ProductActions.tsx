@@ -149,10 +149,10 @@ export default function ProductActions({
                 type="button"
                 disabled={isOutOfStock}
                 onClick={() => setSelectedSize(sizeName)}
-                className={`border px-6 py-3 text-sm font-semibold transition ${
+                className={`rounded-xl border px-6 py-3 text-sm font-semibold transition ${
                   selectedSize === sizeName
-                    ? "border-black bg-black text-white"
-                    : "border-gray-300 hover:border-black"
+                    ? "border-black bg-black text-white shadow-md scale-[1.02]"
+                    : "border-gray-300 hover:border-black hover:bg-gray-50"
                 } ${isOutOfStock ? "opacity-30 cursor-not-allowed bg-gray-100" : ""}`}
               >
                 {sizeName}
@@ -176,14 +176,14 @@ export default function ProductActions({
 
       {/* STOCK */}
 
-      <div className="mt-6 text-sm">
+      <div className="mt-6 text-sm font-medium">
         {product.stock > 0 ? (
-          <span className="text-green-700">
-            In stock
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700 border border-green-200">
+            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /> In stock
           </span>
         ) : (
-          <span className="text-red-600">
-            Out of stock
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 border border-red-200">
+            <span className="h-2 w-2 rounded-full bg-red-500" /> Out of stock
           </span>
         )}
       </div>
@@ -194,11 +194,11 @@ export default function ProductActions({
         <button
           type="button"
           onClick={handleAddToCart}
-        disabled={product.stock <= 0 || (() => {
-          const sObj = product.sizes.find((s: any) => (typeof s === 'object' ? s.size : s) === selectedSize) as any;
-          return sObj && typeof sObj === 'object' && sObj.stock <= 0;
-        })()}
-        className="flex-1 bg-black px-6 py-4 text-sm font-bold tracking-[0.15em] text-[#f4c84a] transition hover:bg-[#f4c84a] hover:text-black disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+          disabled={product.stock <= 0 || (() => {
+            const sObj = product.sizes.find((s: any) => (typeof s === 'object' ? s.size : s) === selectedSize) as any;
+            return sObj && typeof sObj === 'object' && sObj.stock <= 0;
+          })()}
+          className="flex-1 rounded-xl bg-black px-6 py-4 text-sm font-bold tracking-[0.12em] text-[#f4c84a] shadow-lg transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
         >
           ADD TO CART
         </button>
@@ -207,10 +207,10 @@ export default function ProductActions({
           type="button"
           onClick={handleWishlist}
           aria-label="Add to wishlist"
-          className={`flex h-[52px] w-[52px] items-center justify-center border transition ${
+          className={`flex h-[52px] w-[52px] items-center justify-center rounded-xl border transition ${
             wishlisted
               ? "border-black bg-black text-[#f4c84a]"
-              : "border-black text-black hover:bg-black hover:text-[#f4c84a]"
+              : "border-gray-300 text-black hover:border-black hover:bg-black hover:text-[#f4c84a]"
           }`}
         >
           <Heart
@@ -224,7 +224,7 @@ export default function ProductActions({
           type="button"
           onClick={handleShare}
           aria-label="Share product"
-          className="flex h-[52px] w-[52px] items-center justify-center border border-black text-black transition hover:bg-black hover:text-[#f4c84a]"
+          className="flex h-[52px] w-[52px] items-center justify-center rounded-xl border border-gray-300 text-black transition hover:border-black hover:bg-black hover:text-[#f4c84a]"
         >
           <Share2 size={21} strokeWidth={1.5} />
         </button>
@@ -239,28 +239,28 @@ export default function ProductActions({
           const sObj = product.sizes.find((s: any) => (typeof s === 'object' ? s.size : s) === selectedSize) as any;
           return sObj && typeof sObj === 'object' && sObj.stock <= 0;
         })()}
-        className="mt-3 w-full border border-black px-8 py-4 text-sm font-bold tracking-[0.15em] transition hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
+        className="mt-3 w-full rounded-xl bg-[#f4c84a] border border-[#e5b93b] px-8 py-4 text-sm font-bold tracking-[0.12em] text-black shadow-md transition hover:bg-[#ffd96a] disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-200 disabled:text-gray-400"
       >
         BUY IT NOW
       </button>
 
       {/* PINCODE CHECKER */}
       <div className="mt-8 border-t border-gray-200 pt-6">
-        <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">Check Delivery Availability</label>
+        <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Check Delivery Availability</label>
         <div className="flex gap-2">
           <input
             type="text"
             inputMode="numeric"
             maxLength={6}
             value={pincode}
-            placeholder="Enter Pincode"
+            placeholder="Enter 6-digit Pincode"
             onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
-            className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none"
+            className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none"
           />
           <button
             onClick={checkPincode}
             disabled={pincode.length !== 6 || pinStatus === 'loading'}
-            className="bg-black px-6 py-3 text-sm font-bold text-[#f4c84a] transition hover:bg-gray-900 disabled:opacity-50"
+            className="rounded-xl bg-black px-6 py-3 text-sm font-bold text-[#f4c84a] transition hover:bg-gray-900 disabled:opacity-50 shadow-sm"
           >
             {pinStatus === 'loading' ? '...' : 'CHECK'}
           </button>
@@ -274,13 +274,13 @@ export default function ProductActions({
 
       {/* SIZE GUIDE MODAL */}
       {showSizeGuide && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
-          <div className="relative w-full max-w-lg bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
             <button onClick={() => setShowSizeGuide(false)} className="absolute right-4 top-4 text-gray-500 hover:text-black">
               <X size={24} />
             </button>
             <h3 className="mb-4 font-serif text-2xl font-bold">Size Guide</h3>
-            <div className="overflow-hidden border border-gray-200">
+            <div className="overflow-hidden rounded-xl border border-gray-200">
                <img src={sizeGuideImg} alt="Size Guide" className="w-full" onError={(e) => {
                  e.currentTarget.style.display = 'none';
                  document.getElementById('size-table-fallback')?.classList.remove('hidden');

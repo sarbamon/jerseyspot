@@ -8,10 +8,11 @@ import {
   ChevronDown,
   Menu,
   X,
+  Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "@/components/StoreProvider";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -20,9 +21,16 @@ export default function Header({ categories = [] }: { categories?: { name: strin
   const [shopOpen, setShopOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const { cartCount, wishlistCount, isAuthenticated, showLoginModal } = useStore();
   const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setIsSearching(false);
+    setSearchOpen(false);
+  }, [pathname]);
 
   const handleAccountClick = (e: React.MouseEvent) => {
     if (!isAuthenticated) {
@@ -43,9 +51,13 @@ export default function Header({ categories = [] }: { categories?: { name: strin
     const formData = new FormData(e.currentTarget);
     const q = formData.get("q") as string;
     if (q && q.trim()) {
+      setIsSearching(true);
       router.push(`/search?q=${encodeURIComponent(q.trim())}`);
+      setTimeout(() => {
+        setIsSearching(false);
+        setSearchOpen(false);
+      }, 1500);
     }
-    setSearchOpen(false);
   };
 
   return (
@@ -169,18 +181,18 @@ export default function Header({ categories = [] }: { categories?: { name: strin
               </button>
 
               {searchOpen && (
-                <div className="absolute right-0 top-full mt-6 w-[280px] border border-[#292929] bg-black p-4 shadow-xl sm:w-[350px]">
+                <div className="fixed inset-x-4 top-[80px] z-50 rounded-lg border border-[#333] bg-[#000] p-3 shadow-2xl sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-3 sm:w-[320px]">
                   <form onSubmit={handleSearch}>
                     <div className="flex items-center gap-2 border-b border-[#444] pb-2">
                       <input
                         type="text"
                         name="q"
                         placeholder="Search jerseys..."
-                        className="w-full bg-transparent text-sm text-[#f4c84a] placeholder-gray-500 outline-none"
+                        className="w-full bg-transparent text-sm font-medium text-[#f4c84a] placeholder-gray-500 outline-none"
                         autoFocus
                       />
-                      <button type="submit" className="text-[#f4c84a] hover:opacity-70">
-                        <Search size={18} />
+                      <button type="submit" disabled={isSearching} className="text-[#f4c84a] hover:opacity-70 disabled:opacity-50">
+                        {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
                       </button>
                     </div>
                   </form>
@@ -323,6 +335,18 @@ export default function Header({ categories = [] }: { categories?: { name: strin
 
 
             </nav>
+          </div>
+        </div>
+      )}
+
+      {/* ================= SEARCH LOADING OVERLAY ================= */}
+      {isSearching && (
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/75 backdrop-blur-md text-white transition-opacity duration-300">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-[#242424] bg-black px-8 py-6 shadow-2xl">
+            <Loader2 className="h-8 w-8 animate-spin text-[#f4c84a]" />
+            <p className="font-serif text-sm font-bold tracking-widest text-[#f4c84a]">
+              SEARCHING...
+            </p>
           </div>
         </div>
       )}
