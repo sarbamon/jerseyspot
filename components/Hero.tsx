@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface HeroProps {
@@ -52,7 +53,7 @@ export default function Hero({ image, images, title }: HeroProps) {
 
   return (
     <section className="group relative w-full overflow-hidden bg-black">
-      <div className="relative aspect-[16/9] w-full sm:aspect-[1920/850] sm:min-h-[500px]">
+      <div className="relative aspect-[1920/850] w-full min-h-[160px] sm:min-h-[450px]">
         {slideImages.map((src, index) => (
           <div
             key={src + index}
@@ -60,14 +61,16 @@ export default function Hero({ image, images, title }: HeroProps) {
               index === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
             }`}
           >
-            <Image
-              src={src}
-              alt={title || `Jersey Spot Hero ${index + 1}`}
-              fill
-              priority={index === 0}
-              sizes="100vw"
-              className="object-cover object-center"
-            />
+            <Link href="/shop" className="relative block h-full w-full">
+              <Image
+                src={src}
+                alt={title || `Jersey Spot Hero ${index + 1}`}
+                fill
+                priority={index === 0}
+                sizes="100vw"
+                className="object-cover object-center"
+              />
+            </Link>
           </div>
         ))}
 
@@ -77,32 +80,32 @@ export default function Hero({ image, images, title }: HeroProps) {
             <button
               onClick={goToPrev}
               aria-label="Previous Slide"
-              className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/70"
+              className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-1.5 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/70 sm:left-4 sm:p-2"
             >
-              <ChevronLeft size={24} />
+              <ChevronLeft className="h-4 w-4 sm:h-6 sm:w-6" />
             </button>
             <button
               onClick={goToNext}
               aria-label="Next Slide"
-              className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/70"
+              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-1.5 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/70 sm:right-4 sm:p-2"
             >
-              <ChevronRight size={24} />
+              <ChevronRight className="h-4 w-4 sm:h-6 sm:w-6" />
             </button>
           </>
         )}
 
         {/* SLIDE INDICATORS (DOTS) */}
         {slideImages.length > 1 && (
-          <div className="absolute bottom-[7%] left-[8%] z-20 flex items-center gap-2 sm:bottom-[9%] lg:bottom-[10%]">
+          <div className="absolute bottom-[4%] left-[5%] z-20 flex items-center gap-1.5 sm:bottom-[9%] sm:left-[8%] sm:gap-2 lg:bottom-[10%]">
             {slideImages.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentIndex(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-                className={`h-2 rounded-full transition-all duration-300 ${
+                className={`h-1.5 rounded-full transition-all duration-300 sm:h-2 ${
                   idx === currentIndex
-                    ? "w-8 bg-[#f4c84a]"
-                    : "w-2 bg-white/50 hover:bg-white"
+                    ? "w-5 bg-[#f4c84a] sm:w-8"
+                    : "w-1.5 bg-white/50 hover:bg-white sm:w-2"
                 }`}
               />
             ))}
@@ -110,13 +113,13 @@ export default function Hero({ image, images, title }: HeroProps) {
         )}
 
         {/* SHOP NOW BUTTON */}
-        <div className="absolute bottom-[7%] right-[8%] z-20 sm:bottom-[9%] lg:bottom-[10%]">
-          <a
+        <div className="absolute bottom-[4%] right-[5%] z-20 sm:bottom-[9%] sm:right-[8%] lg:bottom-[10%]">
+          <Link
             href="/shop"
-            className="inline-flex min-h-[40px] items-center justify-center bg-[#f4c84a] px-5 py-2 font-serif text-xs font-bold text-black transition hover:bg-[#ffd96a] sm:min-h-[48px] sm:px-8 sm:py-3 sm:text-base lg:px-10 lg:py-4 lg:text-lg shadow-lg"
+            className="inline-flex min-h-[30px] items-center justify-center bg-[#f4c84a] px-3 py-1 font-serif text-[10px] font-bold text-black transition hover:bg-[#ffd96a] sm:min-h-[48px] sm:px-8 sm:py-3 sm:text-base lg:px-10 lg:py-4 lg:text-lg shadow-lg rounded-sm sm:rounded-none"
           >
             SHOP NOW
-          </a>
+          </Link>
         </div>
       </div>
     </section>
