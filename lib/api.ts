@@ -735,6 +735,26 @@ export async function bulkDeleteProducts(ids: string[]) {
   return response.json();
 }
 
+export async function bulkUpdateStock(ids: string[], stock: number = 0) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+
+  const response = await fetch(`${API_URL}/products/bulk-stock`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ ids, stock }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update stock");
+  }
+
+  return response.json();
+}
+
 export async function deleteCoupon(id: string) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
   const response = await fetch(`${API_URL}/coupons/${id}`, {

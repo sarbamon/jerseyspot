@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Search, TableProperties } from "lucide-react";
+import { Plus, TableProperties } from "lucide-react";
 import { getProducts } from "@/lib/api";
 import AdminProductTable from "@/components/admin/AdminProductTable";
 
@@ -62,23 +62,6 @@ export default async function AdminProductsPage({
             ADD PRODUCT
           </Link>
         </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="mb-6">
-        <form action="/admin/products" method="GET" className="relative max-w-md">
-          {isDeletedTab && <input type="hidden" name="tab" value="deleted" />}
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            name="search"
-            defaultValue={search || ""}
-            placeholder="Search products by name or team..."
-            className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-          />
-        </form>
       </div>
 
       <AdminProductTable products={products} isDeletedTab={isDeletedTab} />

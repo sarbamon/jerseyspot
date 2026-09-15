@@ -35,21 +35,43 @@ export default async function ProductPage({
 
   // Pass true to disable Next.js caching so stock is always accurate in real-time
   const data = await getProduct(slug, true);
-  
+
   if (!data || !data.product) {
-    notFound();
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center bg-white px-6 py-20 text-center text-black">
+        <div className="mx-auto max-w-md space-y-6">
+          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-amber-50 shadow-inner border border-amber-200 text-5xl transition-transform hover:scale-110">
+            🥺
+          </div>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-black">
+            Product Currently Unavailable
+          </h1>
+          <p className="text-sm leading-relaxed text-gray-500">
+            This jersey is currently out of stock or has been removed from our catalog.
+          </p>
+          <div className="pt-4">
+            <Link
+              href="/shop"
+              className="inline-block rounded bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-widest text-[#f4c84a] shadow-md transition-transform duration-300 hover:scale-105 hover:bg-gray-900"
+            >
+              EXPLORE ALL JERSEYS
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
   }
-  
+
   const product: Product = data.product;
 
   const discount =
     product.originalPrice &&
-    product.originalPrice > product.price
+      product.originalPrice > product.price
       ? Math.round(
-          ((product.originalPrice - product.price) /
-            product.originalPrice) *
-            100
-        )
+        ((product.originalPrice - product.price) /
+          product.originalPrice) *
+        100
+      )
       : 0;
 
   return (
@@ -94,10 +116,10 @@ export default async function ProductPage({
           {/* ================= PRODUCT IMAGE ================= */}
 
           <div className="relative">
-            <ProductGallery 
-              images={product.images && product.images.length > 0 ? product.images : [product.image]} 
-              name={product.name} 
-              discount={discount} 
+            <ProductGallery
+              images={product.images && product.images.length > 0 ? product.images : [product.image]}
+              name={product.name}
+              discount={discount}
             />
           </div>
 
