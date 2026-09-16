@@ -111,16 +111,23 @@ export default function CheckoutPage() {
         setPincodeMessage("");
         try {
           const res = await checkPincode(shipping.postalCode);
-          setIsServiceable(res.isServiceable);
+          setIsServiceable(res.isServiceable ?? true);
           if (res.isServiceable) {
             setPincodeMessage("Delivery available to this pincode!");
+            if (res.locationName) {
+              setShipping(prev => ({
+                ...prev,
+                city: prev.city || res.locationName
+              }));
+            }
           } else {
             setPincodeMessage("Sorry, we currently do not deliver to this pincode.");
           }
         } catch (err: any) {
           console.error("Failed to check pincode serviceability:", err);
-          setIsServiceable(false);
-          setPincodeMessage(err.message || "Sorry, we currently do not deliver to this pincode.");
+          // Default to true on error so checkout is never blocked by temporary network issues
+          setIsServiceable(true);
+          setPincodeMessage("");
         } finally {
           setCheckingPincode(false);
         }
