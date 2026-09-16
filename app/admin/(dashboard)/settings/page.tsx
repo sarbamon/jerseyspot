@@ -156,26 +156,29 @@ export default function AdminSettingsPage() {
     try {
       const data = await uploadImages(e.target.files);
       if (data.urls && data.urls.length > 0) {
+        let updatedConfig = { ...config };
         if (type === "hero") {
-          setConfig((prev) => {
-            const updatedHeroList = [...(prev.heroImages || []), ...data.urls];
-            return {
-              ...prev,
-              heroImages: updatedHeroList,
-              heroImage: updatedHeroList[0] || prev.heroImage
-            };
-          });
+          const updatedHeroList = [...(config.heroImages || []), ...data.urls];
+          updatedConfig = {
+            ...config,
+            heroImages: updatedHeroList,
+            heroImage: updatedHeroList[0] || config.heroImage || ""
+          };
+          setConfig(updatedConfig);
+          await updateSiteConfig(updatedConfig);
         } else if (type === "sizeGuide") {
-          setConfig((prev) => ({ ...prev, sizeGuideImage: data.urls[0] }));
+          updatedConfig = { ...config, sizeGuideImage: data.urls[0] };
+          setConfig(updatedConfig);
+          await updateSiteConfig(updatedConfig);
         } else {
           // type is the category index
-          setConfig((prev) => {
-            const newCategories = [...(prev.categories || [])];
-            if (newCategories[type]) {
-              newCategories[type] = { ...newCategories[type], image: data.urls[0] };
-            }
-            return { ...prev, categories: newCategories };
-          });
+          const newCategories = [...(config.categories || [])];
+          if (newCategories[type]) {
+            newCategories[type] = { ...newCategories[type], image: data.urls[0] };
+          }
+          updatedConfig = { ...config, categories: newCategories };
+          setConfig(updatedConfig);
+          await updateSiteConfig(updatedConfig);
         }
       }
     } catch (error) {
@@ -183,6 +186,21 @@ export default function AdminSettingsPage() {
       alert("Failed to upload image. Please try again.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRemoveHeroImage = async (idx: number) => {
+    const newImages = (config.heroImages || []).filter((_: string, i: number) => i !== idx);
+    const updatedConfig = { 
+      ...config, 
+      heroImages: newImages, 
+      heroImage: newImages[0] || "" 
+    };
+    setConfig(updatedConfig);
+    try {
+      await updateSiteConfig(updatedConfig);
+    } catch (err) {
+      console.error("Failed to remove hero image from server:", err);
     }
   };
 
@@ -295,10 +313,7 @@ export default function AdminSettingsPage() {
                         <Image src={img} alt={`Hero ${idx + 1}`} fill className="object-cover" />
                         <button
                           type="button"
-                          onClick={() => setConfig(prev => {
-                            const newImages = (prev.heroImages || []).filter((_: string, i: number) => i !== idx);
-                            return { ...prev, heroImages: newImages, heroImage: newImages[0] || "" };
-                          })}
+                          onClick={() => handleRemoveHeroImage(idx)}
                           className="absolute right-2 top-2 rounded-full bg-white p-1 text-red-500 shadow hover:bg-gray-100"
                         >
                           <X size={16} />

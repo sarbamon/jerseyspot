@@ -32,7 +32,7 @@ export default function CheckoutPage() {
     if (!success || adsList.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentAdIndex((prev) => (prev + 1) % adsList.length);
-    }, 4000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [success, adsList]);
 

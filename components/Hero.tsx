@@ -20,23 +20,27 @@ const defaultSlides = [
 ];
 
 export default function Hero({ image, images, title }: HeroProps) {
-  // Build slide array from props or defaults
-  const slideImages =
+  // Filter provided images from settings
+  const customSlides = (
     images && images.length > 0
       ? images
       : image
       ? [image]
-      : defaultSlides;
+      : []
+  ).filter((src) => typeof src === "string" && src.trim() !== "");
+
+  // Use custom settings images if available; fallback to default slides if settings are empty
+  const slideImages = customSlides.length > 0 ? customSlides : defaultSlides;
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Auto-slide every 3 seconds (3000ms)
+  // Auto-slide every 5 seconds (5000ms)
   useEffect(() => {
     if (slideImages.length <= 1) return;
 
     const timer = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % slideImages.length);
-    }, 3000);
+    }, 5000);
 
     return () => clearInterval(timer);
   }, [slideImages.length]);
@@ -67,6 +71,8 @@ export default function Hero({ image, images, title }: HeroProps) {
                 alt={title || `Jersey Spot Hero ${index + 1}`}
                 fill
                 priority={index === 0}
+                quality={100}
+                unoptimized
                 sizes="100vw"
                 className="object-cover object-center"
               />

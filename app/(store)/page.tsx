@@ -6,6 +6,7 @@ import CustomJerseyBanner from "@/components/CustomJerseyBanner";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import Reviews from "@/components/Reviews";
 import { getProducts, getSiteConfig } from "@/lib/api";
+import Script from "next/script";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,9 @@ export default async function Home() {
                data-ad-client="ca-pub-4279196903220340"
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
-          <script dangerouslySetInnerHTML={{ __html: `(adsbygoogle = window.adsbygoogle || []).push({});` }} />
+          <Script id="adsbygoogle-push" strategy="lazyOnload">
+            {`(adsbygoogle = window.adsbygoogle || []).push({});`}
+          </Script>
         </div>
       </div>
     </main>

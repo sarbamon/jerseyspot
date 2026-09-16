@@ -28,7 +28,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4279196903220340" crossOrigin="anonymous"></script>
+        <Script 
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4279196903220340" 
+          strategy="lazyOnload" 
+          crossOrigin="anonymous" 
+        />
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-C9NJR7SQDQ"
           strategy="afterInteractive"
