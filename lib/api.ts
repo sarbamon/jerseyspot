@@ -134,6 +134,25 @@ export async function getUsers() {
   return response.json();
 }
 
+export async function adminResetUserPassword(userId: string, newPassword: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+  const response = await fetch(`${API_URL}/auth/users/${userId}/reset-password`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ newPassword }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to reset user password");
+  }
+
+  return response.json();
+}
+
 export async function updateAdminProfile(data: any) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
 
@@ -641,6 +660,44 @@ export const deleteOrderTracking = async (orderId: string) => {
   return res.json();
 };
 
+export const syncICarryStatuses = async () => {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token");
+  }
+
+  const res = await fetch(`${API_URL}/orders/sync-icarry-statuses`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to sync iCarry statuses");
+  }
+  return res.json();
+};
+
+export const syncSingleICarryStatus = async (orderId: string) => {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem("jerseyspot-admin-token");
+  }
+
+  const res = await fetch(`${API_URL}/orders/${orderId}/sync-icarry-status`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to sync order status");
+  }
+  return res.json();
+};
+
 export const checkPincode = async (pincode: string) => {
   const res = await fetch(`${API_URL}/orders/check-pincode?pincode=${pincode}`);
   if (!res.ok) {
@@ -800,6 +857,23 @@ export async function updateUserProfile(profileData: any) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to update profile");
+  }
+
+  return response.json();
+}
+
+export async function getUserProfile() {
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('jerseyspot-token') || localStorage.getItem('jerseyspot-admin-token')) : null;
+
+  const response = await fetch(`${API_URL}/auth/profile`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch profile");
   }
 
   return response.json();

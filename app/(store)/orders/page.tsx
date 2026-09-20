@@ -28,14 +28,13 @@ export default function MyOrdersPage() {
     if (isInitialized && !isAuthenticated) {
       setError("Please login to view your orders.");
       setLoading(false);
-      showLoginModal();
       return;
     }
     
     if (isInitialized && isAuthenticated) {
       fetchData();
     }
-  }, [isInitialized, isAuthenticated, showLoginModal]);
+  }, [isInitialized, isAuthenticated]);
 
   const fetchData = async () => {
     try {
@@ -228,6 +227,9 @@ export default function MyOrdersPage() {
                     <p className="text-xs text-gray-500 mt-0.5">
                       Size: {mainItem.size || "S"} • Qty: {mainItem.quantity || 1}
                       {order.orderItems?.length > 1 ? ` (+${order.orderItems.length - 1} more)` : ''}
+                    </p>
+                    <p className="text-[10px] font-mono text-gray-400 mt-0.5">
+                      #{order.customOrderId || order._id}
                     </p>
                     <div className="mt-2 flex flex-col gap-0.5">
                       <span className={`inline-block w-fit rounded-full px-2.5 py-0.5 text-[11px] font-bold ${badgeStyle}`}>

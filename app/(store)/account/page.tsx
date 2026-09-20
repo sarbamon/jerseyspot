@@ -2,7 +2,7 @@
 
 import { useStore } from "@/components/StoreProvider";
 import Link from "next/link";
-import { Package, Heart, Ticket, Headset, MapPin } from "lucide-react";
+import { Package, Heart, Ticket, Headset, MapPin, Lock } from "lucide-react";
 import Image from "next/image";
 import Script from "next/script";
 import { useEffect, useState } from "react";
@@ -42,9 +42,12 @@ export default function AccountDashboard() {
       <div className="bg-white border-b border-gray-200 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
           <div className="flex items-center justify-between w-full">
-            <h1 className="font-serif text-2xl font-black text-black">
-              Hello, {user.name}
-            </h1>
+            <div>
+              <h1 className="font-serif text-2xl font-black text-black">
+                Hello, {user.name}
+              </h1>
+              <p className="text-xs text-gray-500 mt-1">{user.email}</p>
+            </div>
             
             <button onClick={() => { logout(); window.location.href="/"; }} className="text-xs font-bold text-red-600 uppercase tracking-wider hover:text-red-700">
               Sign Out
@@ -69,6 +72,13 @@ export default function AccountDashboard() {
           <Link href="/account/address" className="flex flex-col items-center justify-center gap-3 border border-gray-200 bg-white p-6 shadow-sm hover:border-black transition text-black">
             <MapPin size={28} strokeWidth={1.5} />
             <span className="font-bold text-sm tracking-wide">Address</span>
+          </Link>
+
+          <Link href="/account/password" className="flex flex-col items-center justify-center gap-3 border border-gray-200 bg-white p-6 shadow-sm hover:border-black transition text-black">
+            <Lock size={28} strokeWidth={1.5} />
+            <span className="font-bold text-sm tracking-wide">
+              {user?.hasPassword === false || (user?.isGoogleUser && !user?.hasPassword) ? "Set Password" : "Password"}
+            </span>
           </Link>
           
           <Link href="/coupons" className="flex flex-col items-center justify-center gap-3 border border-gray-200 bg-white p-6 shadow-sm hover:border-black transition text-black">

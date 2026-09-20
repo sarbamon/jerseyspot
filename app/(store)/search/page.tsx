@@ -27,7 +27,7 @@ export default async function SearchPage({
   let currentPage = 1;
   let totalProducts = 0;
   try {
-    const data = await getProducts(`?search=${encodeURIComponent(q)}&page=${page}`);
+    const data = await getProducts(`?search=${encodeURIComponent(q)}&limit=35&page=${page}`);
     products = data.products || [];
     totalPages = data.pages || 1;
     currentPage = data.page || 1;

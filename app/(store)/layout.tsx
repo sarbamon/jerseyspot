@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { StoreProvider } from "@/components/StoreProvider";
 import LoginModal from "@/components/LoginModal";
+import SetPasswordModal from "@/components/SetPasswordModal";
 import { getSiteConfig } from "@/lib/api";
 
 export default async function StoreLayout({
@@ -38,6 +39,7 @@ export default async function StoreLayout({
         <Header categories={categories} />
         <div className="flex-1">{children}</div>
         <LoginModal />
+        <SetPasswordModal />
         <Footer categories={categories} />
       </StoreProvider>
     </div>

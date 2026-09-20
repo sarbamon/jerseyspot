@@ -15,11 +15,21 @@ export default function WishlistPage() {
     showLoginModal,
   } = useStore();
 
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      showLoginModal();
-    }
-  }, [isInitialized, isAuthenticated, showLoginModal]);
+  if (isInitialized && !isAuthenticated) {
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center bg-white px-5 text-black text-center">
+        <Heart size={48} className="mb-4 text-gray-300 stroke-[1.5]" />
+        <h1 className="mb-2 font-serif text-3xl font-bold">My Wishlist</h1>
+        <p className="mb-6 text-sm text-gray-500">Please log in to view and manage your saved jerseys.</p>
+        <button
+          onClick={showLoginModal}
+          className="bg-black px-8 py-3.5 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition hover:bg-gray-900 shadow-md"
+        >
+          LOGIN TO VIEW WISHLIST
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-white px-5 py-12 text-black sm:px-8 lg:px-12">
@@ -62,10 +72,13 @@ export default function WishlistPage() {
                   </Link>
 
                   <button
-                    onClick={() =>
-                      toggleWishlist(product)
-                    }
-                    className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center bg-white"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleWishlist(product);
+                    }}
+                    className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md transition-all hover:bg-black hover:text-white"
                     aria-label="Remove from wishlist"
                   >
                     <X size={18} />

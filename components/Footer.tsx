@@ -17,7 +17,8 @@ export default function Footer({ categories = [] }: { categories?: { name: strin
             alt="Jersey Spot"
             width={120}
             height={65}
-            className="mb-8 h-auto w-[120px]"
+            style={{ height: "auto" }}
+            className="mb-8 w-[120px]"
           />
 
           <p className="max-w-[300px] font-serif text-[15px] leading-relaxed text-gray-400 mb-8">

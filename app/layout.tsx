@@ -1,7 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import Script from "next/script";
+import PwaRegister from "@/components/PwaRegister";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: {
@@ -10,6 +19,12 @@ export const metadata: Metadata = {
   },
   description: "Your premium destination for the finest imported football jerseys. Authentic designs, perfect fit, and all-day comfort for true fans.",
   keywords: ["football jerseys", "soccer jerseys", "premium jerseys", "custom jerseys", "Jersey Spot", "sports apparel"],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Jersey Spot",
+  },
   openGraph: {
     title: "Jersey Spot | Premium Quality Football Jerseys",
     description: "Your premium destination for the finest imported football jerseys. Authentic designs, perfect fit, and all-day comfort for true fans.",
@@ -26,8 +41,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <head>
+        <link rel="apple-touch-icon" href="/images/logo.jpg" />
         <Script 
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4279196903220340" 
           strategy="lazyOnload" 
@@ -50,6 +66,7 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "PLACEHOLDER_CLIENT_ID"}>
           {children}
+          <PwaRegister />
         </GoogleOAuthProvider>
       </body>
     </html>

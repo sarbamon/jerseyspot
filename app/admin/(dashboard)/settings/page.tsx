@@ -302,15 +302,18 @@ export default function AdminSettingsPage() {
               <h2 className="text-xl font-bold font-serif border-b pb-2">Hero Section</h2>
             
               <div>
-                <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-gray-700">
+                <label className="mb-1 block text-sm font-bold uppercase tracking-wider text-gray-700">
                   Hero Background Slider Images
                 </label>
+                <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5 font-medium inline-block">
+                  <strong>Full HD Quality:</strong> For ultra-crisp display, upload <strong>1920 x 1080 px</strong> (16:9) images.
+                </p>
                 
                 {config.heroImages && config.heroImages.length > 0 && (
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     {config.heroImages.map((img: string, idx: number) => (
                       <div key={idx} className="relative h-32 w-full overflow-hidden rounded border border-gray-200 group">
-                        <Image src={img} alt={`Hero ${idx + 1}`} fill className="object-cover" />
+                        <Image src={img} alt={`Hero ${idx + 1}`} fill sizes="(max-width: 768px) 50vw, 300px" className="object-cover" />
                         <button
                           type="button"
                           onClick={() => handleRemoveHeroImage(idx)}
@@ -355,7 +358,7 @@ export default function AdminSettingsPage() {
                 
                 {config.sizeGuideImage && (
                   <div className="relative mb-4 h-56 w-full max-w-lg overflow-hidden rounded border border-gray-200 bg-gray-50">
-                    <Image src={config.sizeGuideImage} alt="Size Guide Preview" fill className="object-contain" />
+                    <Image src={config.sizeGuideImage} alt="Size Guide Preview" fill sizes="(max-width: 768px) 100vw, 500px" className="object-contain" />
                     <button
                       type="button"
                       onClick={() => setConfig(prev => ({ ...prev, sizeGuideImage: "" }))}
@@ -441,7 +444,7 @@ export default function AdminSettingsPage() {
                   
                   {cat.image ? (
                     <div className="relative mb-4 h-32 w-full overflow-hidden rounded border border-gray-200">
-                      <Image src={cat.image} alt={cat.name} fill className="object-cover" />
+                      <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 100vw, 300px" className="object-cover" />
                       <button
                         type="button"
                         onClick={() => {

@@ -8,6 +8,8 @@ import {
   ReactNode,
 } from "react";
 
+import { getUserProfile } from "@/lib/api";
+
 export type StoreProduct = {
   _id: string;
   name: string;
@@ -88,12 +90,25 @@ export function StoreProvider({
 
     const auth = localStorage.getItem("jerseyspot-auth");
     const savedUser = localStorage.getItem("jerseyspot-user");
+    const token = localStorage.getItem("jerseyspot-token");
+
     if (auth === "true") {
       setIsAuthenticated(true);
       if (savedUser) {
         try {
           setUser(JSON.parse(savedUser));
         } catch (e) {}
+      }
+
+      if (token) {
+        getUserProfile()
+          .then((res) => {
+            if (res.success && res.user) {
+              setUser(res.user);
+              localStorage.setItem("jerseyspot-user", JSON.stringify(res.user));
+            }
+          })
+          .catch(() => {});
       }
     }
     
@@ -192,13 +207,14 @@ export function StoreProvider({
     product: StoreProduct
   ) => {
     setWishlist((currentWishlist) => {
+      const productId = String(product._id || (product as any).id || "");
       const exists = currentWishlist.some(
-        (item) => item._id === product._id
+        (item) => String(item._id || (item as any).id || "") === productId
       );
 
       if (exists) {
         return currentWishlist.filter(
-          (item) => item._id !== product._id
+          (item) => String(item._id || (item as any).id || "") !== productId
         );
       }
 
@@ -207,8 +223,9 @@ export function StoreProvider({
   };
 
   const isWishlisted = (id: string) => {
+    const targetId = String(id || "");
     return wishlist.some(
-      (item) => item._id === id
+      (item) => String(item._id || (item as any).id || "") === targetId
     );
   };
 

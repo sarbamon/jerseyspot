@@ -57,7 +57,7 @@ export default function Hero({ image, images, title }: HeroProps) {
 
   return (
     <section className="group relative w-full overflow-hidden bg-black">
-      <div className="relative aspect-[1920/850] w-full min-h-[160px] sm:min-h-[450px]">
+      <div className="relative aspect-[1920/850] sm:aspect-[1920/850] w-full">
         {slideImages.map((src, index) => (
           <div
             key={src + index}
@@ -74,7 +74,7 @@ export default function Hero({ image, images, title }: HeroProps) {
                 quality={100}
                 unoptimized
                 sizes="100vw"
-                className="object-cover object-center"
+                className="object-contain sm:object-cover object-center"
               />
             </Link>
           </div>

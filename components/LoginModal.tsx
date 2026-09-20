@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Eye, EyeOff } from "lucide-react";
+import { X, Eye, EyeOff, MessageSquare, Mail, KeyRound } from "lucide-react";
 import { useStore } from "@/components/StoreProvider";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -15,6 +15,12 @@ export default function LoginModal() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999999999";
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+    `Hi Admin, I forgot my password for my account (${email || "my registered email"}). Please help me reset it.`
+  )}`;
 
   // Prevent scrolling when modal is open
   useEffect(() => {
@@ -103,11 +109,17 @@ export default function LoginModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) closeLoginModal();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+    >
       <div className="relative w-full max-w-md rounded-lg bg-white p-8 shadow-2xl">
         <button
+          type="button"
           onClick={closeLoginModal}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-black"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-black z-10"
         >
           <X size={18} />
         </button>
@@ -165,7 +177,11 @@ export default function LoginModal() {
             >
               <span>Password</span>
               {!isRegistering && (
-                <button type="button" className="font-normal text-gray-400 hover:text-black">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="font-normal text-gray-400 hover:text-black transition-colors"
+                >
                   Forgot?
                 </button>
               )}
@@ -234,6 +250,49 @@ export default function LoginModal() {
           </button>
         </div>
       </div>
+
+      {/* Forgot Password Contact Support Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl transition-all">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center space-x-2 text-black">
+                <KeyRound className="h-5 w-5 text-amber-500" />
+                <h3 className="font-bold text-base">Forgot Password?</h3>
+              </div>
+              <button
+                onClick={() => setShowForgotModal(false)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="my-4 text-xs text-gray-600 leading-relaxed">
+              To reset your password, chat with us directly on WhatsApp. Our admin team will reset your password for you right away.
+            </div>
+
+            <div className="space-y-3">
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center space-x-2 rounded-lg bg-green-600 px-4 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-green-700"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>Chat on WhatsApp</span>
+              </a>
+            </div>
+
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="mt-4 w-full text-center text-xs text-gray-400 hover:text-gray-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

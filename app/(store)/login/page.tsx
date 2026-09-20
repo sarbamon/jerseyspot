@@ -3,11 +3,21 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/components/StoreProvider";
-
+import { useState } from "react";
+import { MessageSquare, Mail, KeyRound, X } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useStore();
   const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showForgotModal, setShowForgotModal] = useState(false);
+
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999999999";
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+    `Hi Admin, I forgot my password for my account (${email || "my registered email"}). Please help me reset it.`
+  )}`;
 
   const handleLogin = () => {
     login("mock-token", false);
@@ -35,6 +45,8 @@ export default function LoginPage() {
             <input
               type="email"
               id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none"
               required
             />
@@ -46,13 +58,19 @@ export default function LoginPage() {
               className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-700"
             >
               <span>Password</span>
-              <Link href="#" className="font-normal text-gray-400 hover:text-black">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="font-normal text-gray-400 hover:text-black transition-colors"
+              >
                 Forgot Password?
-              </Link>
+              </button>
             </label>
             <input
               type="password"
               id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none"
               required
             />
@@ -106,6 +124,50 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+
+      {/* Forgot Password Contact Support Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl transition-all">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center space-x-2 text-black">
+                <KeyRound className="h-5 w-5 text-amber-500" />
+                <h3 className="font-bold text-base">Forgot Password?</h3>
+              </div>
+              <button
+                onClick={() => setShowForgotModal(false)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="my-4 text-xs text-gray-600 leading-relaxed">
+              To reset your password, chat with us directly on WhatsApp. Our admin team will reset your password for you right away.
+            </div>
+
+            <div className="space-y-3">
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center space-x-2 rounded-lg bg-green-600 px-4 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-green-700"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>Chat on WhatsApp</span>
+              </a>
+            </div>
+
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="mt-4 w-full text-center text-xs text-gray-400 hover:text-gray-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
+

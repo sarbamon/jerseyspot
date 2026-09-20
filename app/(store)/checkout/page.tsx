@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, Trash2, Plus, Minus } from "lucide-react";
+import { CheckCircle, Trash2, Plus, Minus, MapPin, Edit2, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { useStore } from "@/components/StoreProvider";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
-import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig, checkPincode, getAds } from "@/lib/api";
+import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig, checkPincode, getAds, updateUserProfile } from "@/lib/api";
 
 export default function CheckoutPage() {
   const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart, user, updateUser, updateQuantity, removeFromCart } = useStore();
@@ -16,6 +16,10 @@ export default function CheckoutPage() {
   const [success, setSuccess] = useState(false);
   const [adsList, setAdsList] = useState<any[]>([]);
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
+
+  // Address Selection State
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | "new">(0);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
   
   useEffect(() => {
     if (success) {
@@ -52,6 +56,10 @@ export default function CheckoutPage() {
   const [checkingPincode, setCheckingPincode] = useState(false);
   const [pincodeMessage, setPincodeMessage] = useState("");
 
+  const savedAddresses = user?.shippingAddresses && user.shippingAddresses.length > 0
+    ? user.shippingAddresses
+    : (user?.shippingAddress && (user.shippingAddress.postalCode || user.shippingAddress.city) ? [user.shippingAddress] : []);
+
   useEffect(() => {
     getSiteConfig().then((data) => {
       if (data && data.config && typeof data.config.deliveryCharge === "number") {
@@ -65,27 +73,41 @@ export default function CheckoutPage() {
       if (!isAuthenticated) {
         showLoginModal();
       } else if (user) {
-        // Auto-fill user details and saved shipping address
         const nameParts = user.name ? user.name.split(" ") : [""];
         const firstName = nameParts[0] || "";
         const lastName = nameParts.slice(1).join(" ") || "";
 
-        setShipping(prev => ({
-          ...prev,
-          firstName: user.shippingAddress?.firstName || firstName,
-          lastName: user.shippingAddress?.lastName || lastName,
-          email: user.shippingAddress?.email || user.email || "",
-          phoneNumber: user.shippingAddress?.phoneNumber || prev.phoneNumber,
-          houseOrBuilding: user.shippingAddress?.houseOrBuilding || prev.houseOrBuilding,
-          roadAreaColony: user.shippingAddress?.roadAreaColony || prev.roadAreaColony,
-          landmark: user.shippingAddress?.landmark || prev.landmark,
-          city: user.shippingAddress?.city || prev.city,
-          state: user.shippingAddress?.state || prev.state || "",
-          postalCode: user.shippingAddress?.postalCode || prev.postalCode,
-        }));
+        const addresses = user.shippingAddresses && user.shippingAddresses.length > 0
+          ? user.shippingAddresses
+          : (user.shippingAddress && (user.shippingAddress.postalCode || user.shippingAddress.city) ? [user.shippingAddress] : []);
+
+        if (addresses.length > 0 && selectedAddressIndex !== "new") {
+          const idx = typeof selectedAddressIndex === "number" && selectedAddressIndex < addresses.length ? selectedAddressIndex : 0;
+          const addr = addresses[idx];
+          setShipping({
+            firstName: addr.firstName || firstName,
+            lastName: addr.lastName || lastName,
+            email: addr.email || user.email || "",
+            phoneNumber: addr.phoneNumber || "",
+            houseOrBuilding: addr.houseOrBuilding || addr.streetAddress || "",
+            roadAreaColony: addr.roadAreaColony || "",
+            landmark: addr.landmark || "",
+            city: addr.city || "",
+            state: addr.state || "",
+            postalCode: addr.postalCode || "",
+          });
+        } else if (addresses.length === 0) {
+          setSelectedAddressIndex("new");
+          setShipping(prev => ({
+            ...prev,
+            firstName: firstName,
+            lastName: lastName,
+            email: user.email || "",
+          }));
+        }
       }
     }
-  }, [isInitialized, isAuthenticated, showLoginModal, user]);
+  }, [isInitialized, isAuthenticated, showLoginModal, user, selectedAddressIndex]);
 
   useEffect(() => {
     async function fetchPincodeDetails() {
@@ -240,8 +262,17 @@ export default function CheckoutPage() {
               order_id: order._id,
             });
             
-            // Save the shipping address to the local user state so it autofills next time
-            updateUser({ shippingAddress: shipping });
+            // Save the shipping address to backend & local user state
+            try {
+              const profileRes = await updateUserProfile({ shippingAddress: shipping });
+              if (profileRes && profileRes.user) {
+                updateUser(profileRes.user);
+              } else {
+                updateUser({ shippingAddress: shipping });
+              }
+            } catch (e) {
+              updateUser({ shippingAddress: shipping });
+            }
             
             setSuccess(true);
             clearCart();
@@ -412,88 +443,225 @@ export default function CheckoutPage() {
   return (
     <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-    <main className="min-h-screen bg-white px-5 py-12 text-black sm:px-8 lg:px-12">
+    <main className="min-h-screen bg-white px-3.5 py-6 text-black sm:px-8 sm:py-12 lg:px-12 overflow-x-hidden">
       <div className="mx-auto max-w-6xl">
-        <h1 className="mb-10 font-serif text-3xl font-bold uppercase tracking-wider">
+        <h1 className="mb-6 sm:mb-10 font-serif text-2xl sm:text-3xl font-bold uppercase tracking-wider">
           Checkout
         </h1>
 
-        <div className="grid gap-12 lg:grid-cols-[1fr_420px]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:gap-12">
           {/* SHIPPING FORM */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
-            <h2 className="mb-6 font-serif text-2xl font-bold border-b pb-3">Shipping Information</h2>
-            <form id="checkout-form" onSubmit={handlePayment} className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">First Name</label>
-                  <input type="text" name="firstName" value={shipping.firstName} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Last Name</label>
-                  <input type="text" name="lastName" value={shipping.lastName} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
-                </div>
-              </div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-8 shadow-sm w-full min-w-0 overflow-hidden">
+            <h2 className="mb-6 font-serif text-xl sm:text-2xl font-bold border-b pb-3 flex flex-wrap items-center justify-between gap-2">
+              <span>Shipping Information</span>
+              {savedAddresses.length > 0 && selectedAddressIndex !== "new" && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingAddress(!isEditingAddress)}
+                  className="text-xs font-sans font-bold text-gray-600 hover:text-black flex items-center gap-1 bg-gray-100 px-2.5 py-1.5 rounded-lg transition shrink-0"
+                >
+                  <Edit2 size={13} />
+                  {isEditingAddress ? "Hide Details" : "Edit Selected Address"}
+                  {isEditingAddress ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              )}
+            </h2>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Email Address</label>
-                <input type="email" name="email" value={shipping.email} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
-              </div>
+            {/* SAVED ADDRESS SELECTION CARDS */}
+            {savedAddresses.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
+                  Choose from saved addresses ({savedAddresses.length})
+                </p>
+                
+                <div className="space-y-3">
+                  {savedAddresses.map((addr: any, idx: number) => {
+                    const isSelected = selectedAddressIndex === idx;
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setSelectedAddressIndex(idx);
+                          setIsEditingAddress(false);
+                          setShipping({
+                            firstName: addr.firstName || "",
+                            lastName: addr.lastName || "",
+                            email: addr.email || user?.email || "",
+                            phoneNumber: addr.phoneNumber || "",
+                            houseOrBuilding: addr.houseOrBuilding || addr.streetAddress || "",
+                            roadAreaColony: addr.roadAreaColony || "",
+                            landmark: addr.landmark || "",
+                            city: addr.city || "",
+                            state: addr.state || "",
+                            postalCode: addr.postalCode || "",
+                          });
+                        }}
+                        className={`cursor-pointer rounded-xl border p-3 sm:p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full min-w-0 overflow-hidden ${
+                          isSelected
+                            ? "border-2 border-black bg-gray-50/90 shadow-sm ring-1 ring-black"
+                            : "border-gray-200 bg-white hover:border-gray-400 hover:shadow-xs"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <div className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border flex items-center justify-center transition-colors ${isSelected ? "border-black bg-black text-[#f4c84a]" : "border-gray-300"}`}>
+                            {isSelected && <Check size={10} strokeWidth={3} />}
+                          </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Phone Number</label>
-                <input type="tel" name="phoneNumber" value={shipping.phoneNumber} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
-              </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                              <p className="font-bold text-sm text-black">
+                                {addr.firstName} {addr.lastName}
+                              </p>
+                              <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'bg-black text-[#f4c84a]' : 'bg-gray-100 text-gray-600'}`}>
+                                {idx === 0 ? "Default" : `Address ${idx + 1}`}
+                              </span>
+                            </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">House No. / Building Name</label>
-                <input type="text" name="houseOrBuilding" value={shipping.houseOrBuilding} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
-              </div>
+                            <p className="text-xs text-gray-600 leading-normal break-words">
+                              <span>{addr.houseOrBuilding}</span>
+                              {addr.roadAreaColony && <span>, {addr.roadAreaColony}</span>}
+                              {addr.landmark && <span className="text-gray-500"> (Near: {addr.landmark})</span>}
+                              <span className="font-semibold text-gray-900 ml-1">
+                                • {addr.city}, {addr.state} - {addr.postalCode}
+                              </span>
+                            </p>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Street Address</label>
-                <input type="text" name="roadAreaColony" value={shipping.roadAreaColony} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
-              </div>
+                            {addr.phoneNumber && (
+                              <p className="font-mono text-gray-700 text-[11px] mt-0.5">
+                                Phone: {addr.phoneNumber}
+                              </p>
+                            )}
+                          </div>
+                        </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Landmark (Optional)</label>
-                <input type="text" name="landmark" value={shipping.landmark} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" />
-              </div>
+                        {isSelected && (
+                          <div className="shrink-0 self-start sm:self-auto flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-50 px-2.5 py-1 rounded-lg border border-green-200">
+                            <CheckCircle size={12} /> Selected
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
 
-              <div className="grid gap-6 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Pincode</label>
-                  <input type="text" name="postalCode" value={shipping.postalCode} onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setShipping(prev => ({ ...prev, postalCode: val }));
-                  }} maxLength={6} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
-                  {checkingPincode && <p className="text-xs text-gray-500 mt-1">Checking serviceability...</p>}
-                  {pincodeMessage && !checkingPincode && (
-                    <p className={`text-xs mt-1 font-medium ${isServiceable ? 'text-green-600' : 'text-red-600'}`}>
-                      {pincodeMessage}
+                  {/* ADD NEW ADDRESS RECTANGULAR CARD */}
+                  <div
+                    onClick={() => {
+                      setSelectedAddressIndex("new");
+                      setIsEditingAddress(true);
+                      const nameParts = user?.name ? user.name.split(" ") : [""];
+                      setShipping({
+                        firstName: nameParts[0] || "",
+                        lastName: nameParts.slice(1).join(" ") || "",
+                        email: user?.email || "",
+                        phoneNumber: "",
+                        houseOrBuilding: "",
+                        roadAreaColony: "",
+                        landmark: "",
+                        city: "",
+                        state: "",
+                        postalCode: "",
+                      });
+                    }}
+                    className={`cursor-pointer rounded-xl border border-dashed p-3 transition-all flex items-center justify-center gap-2 text-center w-full min-w-0 ${
+                      selectedAddressIndex === "new"
+                        ? "border-2 border-black bg-gray-50/90 shadow-sm ring-1 ring-black"
+                        : "border-gray-300 bg-gray-50/40 hover:border-black hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-black text-[#f4c84a] flex items-center justify-center shadow-xs shrink-0">
+                      <Plus size={13} />
+                    </div>
+                    <p className="font-bold text-xs uppercase tracking-wider text-black">
+                      + Deliver to a New Address
                     </p>
-                  )}
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">City / District</label>
-                  <input type="text" name="city" value={shipping.city} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">State</label>
-                  <input type="text" name="state" value={shipping.state} onChange={handleChange} className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                  </div>
                 </div>
               </div>
+            )}
+
+            <form id="checkout-form" onSubmit={handlePayment} className="space-y-5 sm:space-y-6">
+              {(savedAddresses.length === 0 || selectedAddressIndex === "new" || isEditingAddress) && (
+                <>
+                  {savedAddresses.length > 0 && selectedAddressIndex !== "new" && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-800 font-medium mb-4 flex items-center justify-between">
+                      <span>Editing address details for this order</span>
+                      <button type="button" onClick={() => setIsEditingAddress(false)} className="underline font-bold text-yellow-900">Close</button>
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">First Name</label>
+                      <input type="text" name="firstName" value={shipping.firstName} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Last Name</label>
+                      <input type="text" name="lastName" value={shipping.lastName} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Email Address</label>
+                    <input type="email" name="email" value={shipping.email} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Phone Number</label>
+                    <input type="tel" name="phoneNumber" value={shipping.phoneNumber} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">House No. / Building Name</label>
+                    <input type="text" name="houseOrBuilding" value={shipping.houseOrBuilding} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Street Address / Area</label>
+                    <input type="text" name="roadAreaColony" value={shipping.roadAreaColony} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Landmark (Optional)</label>
+                    <input type="text" name="landmark" value={shipping.landmark} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-3 sm:gap-6">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">Pincode</label>
+                      <input type="text" name="postalCode" value={shipping.postalCode} onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setShipping(prev => ({ ...prev, postalCode: val }));
+                      }} maxLength={6} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                      {checkingPincode && <p className="text-xs text-gray-500 mt-1">Checking serviceability...</p>}
+                      {pincodeMessage && !checkingPincode && (
+                        <p className={`text-xs mt-1 font-medium ${isServiceable ? 'text-green-600' : 'text-red-600'}`}>
+                          {pincodeMessage}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">City / District</label>
+                      <input type="text" name="city" value={shipping.city} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-700">State</label>
+                      <input type="text" name="state" value={shipping.state} onChange={handleChange} className="w-full rounded-xl border border-gray-300 bg-white text-black px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition" required />
+                    </div>
+                  </div>
+                </>
+              )}
             </form>
           </div>
 
           {/* ORDER SUMMARY */}
           <div>
-            <div className="sticky top-24 rounded-2xl border border-gray-200 bg-gray-50/80 p-6 shadow-sm backdrop-blur-sm">
-              <h2 className="mb-6 font-serif text-xl font-bold border-b border-gray-200 pb-3">Order Summary</h2>
+            <div className="sticky top-24 rounded-2xl border border-gray-200 bg-gray-50/80 p-4 sm:p-6 shadow-sm backdrop-blur-sm w-full min-w-0 overflow-hidden">
+              <h2 className="mb-4 sm:mb-6 font-serif text-lg sm:text-xl font-bold border-b border-gray-200 pb-3">Order Summary</h2>
               
               <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1">
                 {cart.map((item) => (
-                  <div key={`${item._id}-${item.size}`} className="flex gap-3 items-center border border-gray-200/80 bg-white p-3 rounded-xl shadow-xs transition hover:border-gray-300">
-                    <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-50 border border-gray-100">
+                  <div key={`${item._id}-${item.size}`} className="flex gap-2.5 items-center border border-gray-200/80 bg-white p-2.5 sm:p-3 rounded-xl shadow-xs transition hover:border-gray-300 min-w-0 overflow-hidden">
+                    <div className="relative h-14 w-12 sm:h-16 sm:w-14 shrink-0 overflow-hidden rounded-lg bg-gray-50 border border-gray-100">
                       <Image src={item.image} alt={item.name} fill sizes="60px" className="object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -502,7 +670,7 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => removeFromCart(item._id, item.size)}
-                          className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                          className="text-gray-400 hover:text-red-600 transition-colors p-1 shrink-0"
                           aria-label="Remove item"
                           title="Remove item"
                         >
@@ -510,25 +678,25 @@ export default function CheckoutPage() {
                         </button>
                       </div>
                       <p className="text-[11px] font-semibold text-gray-500 mt-0.5">Size: {item.size}</p>
-                      <div className="mt-2 flex items-center justify-between">
+                      <div className="mt-1.5 flex items-center justify-between gap-1 flex-wrap sm:flex-nowrap">
                         <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
                           <button
                             type="button"
                             onClick={() => updateQuantity(item._id, item.size, item.quantity - 1)}
-                            className="flex h-7 w-7 items-center justify-center text-xs font-bold text-gray-700 hover:bg-gray-200 transition"
+                            className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-xs font-bold text-gray-700 hover:bg-gray-200 transition"
                           >
-                            <Minus size={11} />
+                            <Minus size={10} />
                           </button>
-                          <span className="w-7 text-center text-xs font-bold text-black">{item.quantity}</span>
+                          <span className="w-6 sm:w-7 text-center text-xs font-bold text-black">{item.quantity}</span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(item._id, item.size, item.quantity + 1)}
-                            className="flex h-7 w-7 items-center justify-center text-xs font-bold text-gray-700 hover:bg-gray-200 transition"
+                            className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-xs font-bold text-gray-700 hover:bg-gray-200 transition"
                           >
-                            <Plus size={11} />
+                            <Plus size={10} />
                           </button>
                         </div>
-                        <p className="font-bold text-xs text-black">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                        <p className="font-bold text-xs text-black whitespace-nowrap">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
                       </div>
                     </div>
                   </div>
@@ -538,20 +706,20 @@ export default function CheckoutPage() {
               {/* COUPON SECTION */}
               <div className="mt-6 border-t border-gray-200 pt-6">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-700">Gift Card or Discount Code</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full min-w-0">
                   <input
                     type="text"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                     disabled={!!appliedCoupon}
                     placeholder="Enter code"
-                    className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-black focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                    className="flex-1 min-w-0 rounded-xl border border-gray-300 px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm focus:border-black focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
                   />
                   {appliedCoupon ? (
                     <button
                       type="button"
                       onClick={handleRemoveCoupon}
-                      className="rounded-xl bg-gray-200 px-6 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300"
+                      className="shrink-0 rounded-xl bg-gray-200 px-4 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold text-gray-700 transition-colors hover:bg-gray-300"
                     >
                       REMOVE
                     </button>
@@ -560,7 +728,7 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={handleApplyCoupon}
                       disabled={applyingCoupon || !couponCode}
-                      className="rounded-xl bg-black px-6 py-3 text-sm font-bold text-[#f4c84a] shadow-sm transition-colors hover:bg-gray-900 disabled:opacity-50"
+                      className="shrink-0 rounded-xl bg-black px-4 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold text-[#f4c84a] shadow-sm transition-colors hover:bg-gray-900 disabled:opacity-50"
                     >
                       {applyingCoupon ? "..." : "APPLY"}
                     </button>
@@ -595,7 +763,7 @@ export default function CheckoutPage() {
                 form="checkout-form"
                 type="submit"
                 disabled={loading || isServiceable === false || checkingPincode}
-                className={`mt-8 w-full rounded-xl px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] shadow-lg transition-all ${(loading || isServiceable === false || checkingPincode) ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-900 active:scale-[0.99]'}`}
+                className={`mt-6 sm:mt-8 w-full rounded-xl px-4 py-3.5 sm:px-6 sm:py-4 text-xs sm:text-sm font-bold uppercase tracking-wider text-[#f4c84a] shadow-lg transition-all ${(loading || isServiceable === false || checkingPincode) ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-900 active:scale-[0.99]'}`}
               >
                 {loading ? "Processing..." : "Place Order"}
               </button>

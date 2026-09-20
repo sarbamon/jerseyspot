@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder, fetchICarryPickupAddresses, updateOrderTracking, deleteOrderTracking } from "@/lib/api";
+import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder, fetchICarryPickupAddresses, updateOrderTracking, deleteOrderTracking, syncICarryStatuses, syncSingleICarryStatus } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { Trash2, Search, CheckSquare, Eye, X, ExternalLink } from "lucide-react";
+import { Trash2, Search, CheckSquare, Eye, X, ExternalLink, RefreshCw } from "lucide-react";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -18,6 +18,8 @@ export default function AdminOrdersPage() {
   const [trackingModalOrder, setTrackingModalOrder] = useState<any>(null);
   const [trackingData, setTrackingData] = useState<any>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
+  const [syncingStatuses, setSyncingStatuses] = useState(false);
+  const [syncingSingleId, setSyncingSingleId] = useState<string | null>(null);
 
   // View Products Modal State
   const [viewProductsModalOrder, setViewProductsModalOrder] = useState<any>(null);
@@ -154,6 +156,21 @@ export default function AdminOrdersPage() {
       const res = await getOrderTracking(orderId);
       if (res.tracking) {
         setTrackingData(res.tracking);
+        if (res.orderStatus || res.courierName || res.location) {
+          setOrders((prev: any) =>
+            prev.map((o: any) =>
+              o._id === orderId
+                ? {
+                    ...o,
+                    deliveryStatus: res.orderStatus || o.deliveryStatus,
+                    courierName: res.courierName || o.courierName,
+                    lastKnownLocation: res.location || o.lastKnownLocation,
+                    isDelivered: res.orderStatus === "Delivered" || o.isDelivered,
+                  }
+                : o
+            )
+          );
+        }
       } else {
         alert("Could not fetch tracking");
       }
@@ -161,6 +178,38 @@ export default function AdminOrdersPage() {
       alert(e.message || "Failed to fetch tracking");
     } finally {
       setTrackingLoading(false);
+    }
+  };
+
+  const handleSyncICarryStatuses = async () => {
+    try {
+      setSyncingStatuses(true);
+      const res = await syncICarryStatuses();
+      if (res.orders) {
+        setOrders(res.orders);
+      }
+      alert(res.message || "Synced iCarry statuses successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to sync iCarry statuses");
+    } finally {
+      setSyncingStatuses(false);
+    }
+  };
+
+  const handleSyncSingleOrder = async (orderId: string) => {
+    try {
+      setSyncingSingleId(orderId);
+      const res = await syncSingleICarryStatus(orderId);
+      if (res.order) {
+        setOrders((prev: any) =>
+          prev.map((o: any) => (o._id === orderId ? { ...o, ...res.order } : o))
+        );
+      }
+      alert(res.message || "Status synced successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to sync order status");
+    } finally {
+      setSyncingSingleId(null);
     }
   };
 
@@ -261,10 +310,7 @@ export default function AdminOrdersPage() {
       let otp = undefined;
       let cancelReason = undefined;
 
-      if (newStatus === "Delivered") {
-        otp = window.prompt("Enter the 4-digit Delivery OTP provided by the user:");
-        if (otp === null) return; // Cancelled
-      } else if (newStatus === "Cancelled") {
+      if (newStatus === "Cancelled") {
         const inputReason = window.prompt("Enter Cancellation Reason (will be shown to customer):");
         if (inputReason === null) return; // Cancelled prompt
         cancelReason = inputReason;
@@ -569,7 +615,8 @@ export default function AdminOrdersPage() {
     // 2. Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      const idMatch = order._id.toLowerCase().includes(query);
+      const displayId = (order.customOrderId || order._id).toLowerCase();
+      const idMatch = displayId.includes(query);
       const nameMatch = `${order.shippingAddress?.firstName || ""} ${order.shippingAddress?.lastName || ""}`.toLowerCase().includes(query);
       const dateMatch = formatDate(order.createdAt).includes(query);
       
@@ -610,16 +657,28 @@ export default function AdminOrdersPage() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full lg:w-72">
-          <input
-            type="text"
-            placeholder="Search ID, Name, or Date..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded border border-gray-300 py-2 pl-10 pr-4 text-sm outline-none focus:border-black"
-          />
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        {/* Search & Sync Toolbar */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          <button
+            onClick={handleSyncICarryStatuses}
+            disabled={syncingStatuses}
+            className="flex items-center gap-1.5 rounded bg-black px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition-all hover:bg-gray-800 disabled:opacity-50"
+            title="Automatically fetch live statuses from iCarry for all orders"
+          >
+            <RefreshCw size={14} className={syncingStatuses ? "animate-spin" : ""} />
+            <span>{syncingStatuses ? "Syncing..." : "Sync iCarry Statuses"}</span>
+          </button>
+
+          <div className="relative w-full lg:w-72">
+            <input
+              type="text"
+              placeholder="Search ID, Name, or Date..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded border border-gray-300 py-2 pl-10 pr-4 text-sm outline-none focus:border-black"
+            />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
         </div>
       </div>
 
@@ -636,6 +695,7 @@ export default function AdminOrdersPage() {
             >
               <option value="">Change Status...</option>
               <option value="Order Received">Order Received</option>
+              <option value="Not Picked">Not Picked</option>
               <option value="Order Confirmed & Ready to Ship">Order Confirmed & Ready to Ship</option>
               <option value="Order Picked Up by Delivery Partner">Order Picked Up by Delivery Partner</option>
               <option value="In Transit">In Transit</option>
@@ -712,43 +772,34 @@ export default function AdminOrdersPage() {
                         />
                       </td>
                       <td className="px-6 py-4 font-mono text-xs font-bold text-gray-900">
-                        {order._id}
+                        {order.customOrderId || order._id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {formatDate(order.createdAt)}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-bold text-black">{order.shippingAddress?.firstName} {order.shippingAddress?.lastName}</div>
-                        <div className="text-xs text-gray-500 mb-2">{order.shippingAddress?.email}</div>
-                        
-                        <div className="text-xs text-gray-700">
-                          <span className="font-semibold">Phone:</span> {order.shippingAddress?.phoneNumber}
+                        <div className="font-semibold text-black">
+                          {order.shippingAddress?.firstName} {order.shippingAddress?.lastName}
                         </div>
-                        <div className="text-[10px] text-gray-500 mt-1 max-w-[200px] whitespace-normal">
-                          {order.shippingAddress?.houseOrBuilding 
-                            ? `${order.shippingAddress?.houseOrBuilding}, ${order.shippingAddress?.roadAreaColony}${order.shippingAddress?.landmark ? `, ${order.shippingAddress?.landmark}` : ""}` 
-                            : order.shippingAddress?.streetAddress}
-                          <br />
-                          {order.shippingAddress?.city}, {order.shippingAddress?.postalCode}
-                        </div>
+                        <div className="text-xs text-gray-500">{order.shippingAddress?.email}</div>
+                        <div className="text-xs text-gray-500">{order.shippingAddress?.phoneNumber}</div>
                       </td>
-                      <td className="px-6 py-4 text-xs text-gray-700 min-w-[220px]">
-                        <div className="space-y-2">
-                          {order.orderItems?.map((item: any, idx: number) => (
-                            <div key={idx} className="flex items-center gap-2.5">
-                              <div 
-                                onClick={() => item.image && setPreviewImage(item.image)}
-                                className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-100 cursor-pointer group"
-                                title="Click to view full photo"
-                              >
-                                <img
-                                  src={item.image || "/placeholder.png"}
-                                  alt={item.name}
-                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).setAttribute("src", "/placeholder.png");
-                                  }}
-                                />
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          {order.orderItems?.slice(0, 2).map((item: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <div className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-100">
+                                {item.image ? (
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-[8px] text-gray-400">
+                                    No img
+                                  </div>
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-black truncate max-w-[160px]" title={item.name}>
@@ -789,6 +840,16 @@ export default function AdminOrdersPage() {
                           <div>
                             <div className="font-mono text-xs font-bold text-black">{order.trackingNumber}</div>
                             <div className="text-[10px] uppercase font-semibold text-gray-500">{order.courierName || "N/A"}</div>
+                            {order.lastKnownLocation && (
+                              <div className="text-[10px] text-gray-600 font-semibold truncate max-w-[140px]" title={order.lastKnownLocation}>
+                                📍 {order.lastKnownLocation}
+                              </div>
+                            )}
+                            {order.expectedDeliveryDate && (
+                              <div className="text-[10px] text-blue-700 font-bold truncate max-w-[140px]" title={order.expectedDeliveryDate}>
+                                📅 Est: {order.expectedDeliveryDate}
+                              </div>
+                            )}
                             {order.trackingUrl && (
                               <a
                                 href={order.trackingUrl}
@@ -807,6 +868,19 @@ export default function AdminOrdersPage() {
                               >
                                 VIEW
                               </button>
+                              {order.shipmentId && (
+                                <>
+                                  <span className="text-gray-300">|</span>
+                                  <button
+                                    onClick={() => handleSyncSingleOrder(order._id)}
+                                    disabled={syncingSingleId === order._id}
+                                    className="text-emerald-600 hover:underline disabled:opacity-50"
+                                    title="Sync live status from iCarry"
+                                  >
+                                    {syncingSingleId === order._id ? "SYNCING..." : "SYNC"}
+                                  </button>
+                                </>
+                              )}
                               <span className="text-gray-300">|</span>
                               <button
                                 onClick={() => openManualTrackingModal(order)}
@@ -844,20 +918,28 @@ export default function AdminOrdersPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          value={order.deliveryStatus || (order.isDelivered ? "Delivered" : "Order Received")}
-                          onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                          className="rounded border border-gray-300 px-2 py-1 text-xs font-bold text-gray-700 outline-none focus:border-black"
-                        >
-                          <option value="Order Received">Order Received</option>
-                          <option value="Order Confirmed & Ready to Ship">Order Confirmed & Ready to Ship</option>
-                          <option value="Order Picked Up by Delivery Partner">Order Picked Up by Delivery Partner</option>
-                          <option value="In Transit">In Transit</option>
-                          <option value="Near You">Near You</option>
-                          <option value="Out for Delivery">Out for Delivery</option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Cancelled">Cancelled</option>
-                        </select>
+                        <div className="flex flex-col gap-1">
+                          <select
+                            value={order.deliveryStatus || (order.isDelivered ? "Delivered" : "Order Received")}
+                            onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                            className="rounded border border-gray-300 px-2 py-1 text-xs font-bold text-gray-700 outline-none focus:border-black"
+                          >
+                            <option value="Order Received">Order Received</option>
+                            <option value="Not Picked">Not Picked</option>
+                            <option value="Order Confirmed & Ready to Ship">Order Confirmed & Ready to Ship</option>
+                            <option value="Order Picked Up by Delivery Partner">Order Picked Up by Delivery Partner</option>
+                            <option value="In Transit">In Transit</option>
+                            <option value="Near You">Near You</option>
+                            <option value="Out for Delivery">Out for Delivery</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                          {order.shipmentId && (
+                            <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block w-max">
+                              ⚡ Auto-Synced iCarry
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                         {!order.isCancelled && order.deliveryStatus !== 'Cancelled' && (
@@ -909,6 +991,11 @@ export default function AdminOrdersPage() {
                     <p className="text-sm font-bold text-black">Status: <span className="text-blue-600">{trackingData.status || "Processing"}</span></p>
                     <p className="text-xs text-gray-500">Courier: {trackingData.courierName}</p>
                     {trackingData.location && <p className="text-xs text-gray-500">Current Location: {trackingData.location}</p>}
+                    {trackingData.expectedDeliveryDate && (
+                      <p className="text-xs font-extrabold text-blue-700 mt-1">
+                        📅 Expected Delivery: {trackingData.expectedDeliveryDate}
+                      </p>
+                    )}
                   </div>
 
                   <div className="relative border-l-2 border-gray-200 ml-3 pl-4 space-y-6">
@@ -1112,7 +1199,7 @@ export default function AdminOrdersPage() {
                 <h3 className="text-base font-bold text-black uppercase tracking-wider">
                   {manualTrackingOrder.trackingNumber ? "Edit Tracking Info" : "Add Tracking Manually"}
                 </h3>
-                <p className="text-xs text-gray-500 font-mono">Order #{manualTrackingOrder._id}</p>
+                <p className="text-xs text-gray-500 font-mono">Order #{manualTrackingOrder.customOrderId || manualTrackingOrder._id}</p>
               </div>
               <button
                 type="button"
@@ -1204,7 +1291,7 @@ export default function AdminOrdersPage() {
                   Product Photos & Details
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Order ID: <span className="font-mono font-bold text-black">{viewProductsModalOrder._id}</span> • {formatDate(viewProductsModalOrder.createdAt)}
+                  Order ID: <span className="font-mono font-bold text-black">{viewProductsModalOrder.customOrderId || viewProductsModalOrder._id}</span> • {formatDate(viewProductsModalOrder.createdAt)}
                 </p>
               </div>
               <button

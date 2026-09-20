@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
                   ) : (
                     recentOrders.map((order) => (
                       <tr key={order._id} className="transition-colors hover:bg-gray-50">
-                        <td className="px-6 py-4 font-bold text-black font-mono text-xs">{order._id}</td>
+                        <td className="px-6 py-4 font-bold text-black font-mono text-xs">{order.customOrderId || order._id}</td>
                         <td className="px-6 py-4">{order.shippingAddress?.firstName} {order.shippingAddress?.lastName}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{formatDate(order.createdAt)}</td>
                         <td className="px-6 py-4">

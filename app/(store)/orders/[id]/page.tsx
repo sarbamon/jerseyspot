@@ -185,7 +185,7 @@ export default function OrderDetailsPage() {
 
         {/* Order ID */}
         <div className="bg-white px-4 py-3 flex items-center justify-between text-sm text-gray-500">
-          <span>Order #{order._id}</span>
+          <span>Order #{order.customOrderId || order._id}</span>
           <button className="text-blue-600">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
           </button>
@@ -304,6 +304,19 @@ export default function OrderDetailsPage() {
             </div>
           </div>
 
+          {/* Expected Delivery Date Banner */}
+          {(trackingData?.expectedDeliveryDate || order.expectedDeliveryDate) && !isDelivered && !isCancelled && (
+            <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs flex items-center gap-3 text-blue-900">
+              <span className="text-xl">📅</span>
+              <div>
+                <span className="font-bold text-xs uppercase tracking-wider text-blue-700 block">Expected Delivery Date</span>
+                <span className="text-sm font-extrabold text-blue-950">
+                  {trackingData?.expectedDeliveryDate || order.expectedDeliveryDate}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 flex gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
             <div className="w-full">
@@ -311,6 +324,9 @@ export default function OrderDetailsPage() {
                 <>
                   <span className="block font-bold mb-1">Live Updates:</span>
                   <span className="block mb-2 text-gray-700 font-medium">Courier: {trackingData.courierName} {trackingData.status ? `(${trackingData.status})` : ""}</span>
+                  {(trackingData.expectedDeliveryDate || order.expectedDeliveryDate) && (
+                    <span className="block mb-2 text-blue-800 font-bold">Est. Delivery: {trackingData.expectedDeliveryDate || order.expectedDeliveryDate}</span>
+                  )}
                   {trackingData.details.slice(0, 1).map((event: any, idx: number) => {
                     const dateStr = formatTrackingDate(event.datetime || event.date || event.time || event.timestamp);
                     const notesStr = event.notes || event.status || event.activity || "";
@@ -329,6 +345,11 @@ export default function OrderDetailsPage() {
                   <div className="text-gray-700">
                     <span className="font-semibold">Courier:</span> {order.courierName || trackingData?.courierName || "Standard Shipping"}
                   </div>
+                  {order.expectedDeliveryDate && (
+                    <div className="text-blue-800 font-bold">
+                      <span className="font-semibold">Expected Delivery:</span> {order.expectedDeliveryDate}
+                    </div>
+                  )}
                   <div className="text-gray-700 font-mono">
                     <span className="font-semibold font-sans">Tracking ID / AWB:</span> {order.trackingNumber}
                   </div>
