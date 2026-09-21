@@ -43,7 +43,8 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <head>
-        <link rel="apple-touch-icon" href="/images/logo.jpg" />
+        <link rel="apple-touch-icon" href="/images/app-logo.jpg" />
+        <link rel="icon" type="image/jpeg" href="/images/app-logo.jpg" />
         <Script 
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4279196903220340" 
           strategy="lazyOnload" 

@@ -4,6 +4,7 @@ const PRECACHE_ASSETS = [
   '/',
   '/shop',
   '/images/logo.jpg',
+  '/images/app-logo.jpg',
   '/manifest.webmanifest'
 ];
 
