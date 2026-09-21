@@ -264,11 +264,29 @@ export default function CheckoutPage() {
             
             // Save the shipping address to backend & local user state
             try {
-              const profileRes = await updateUserProfile({ shippingAddress: shipping });
+              let updatedAddresses = [...savedAddresses];
+              const fullStreet = shipping.houseOrBuilding 
+                ? `${shipping.houseOrBuilding}, ${shipping.roadAreaColony}${shipping.landmark ? `, ${shipping.landmark}` : ''}`
+                : (shipping.roadAreaColony || "");
+              const fullAddr = {
+                ...shipping,
+                streetAddress: fullStreet
+              };
+              
+              if (selectedAddressIndex === "new") {
+                updatedAddresses.push(fullAddr);
+              } else if (typeof selectedAddressIndex === "number" && selectedAddressIndex < updatedAddresses.length) {
+                updatedAddresses[selectedAddressIndex] = { ...updatedAddresses[selectedAddressIndex], ...fullAddr };
+              }
+
+              const profileRes = await updateUserProfile({ 
+                shippingAddress: fullAddr,
+                shippingAddresses: updatedAddresses
+              });
               if (profileRes && profileRes.user) {
                 updateUser(profileRes.user);
               } else {
-                updateUser({ shippingAddress: shipping });
+                updateUser({ shippingAddress: fullAddr, shippingAddresses: updatedAddresses });
               }
             } catch (e) {
               updateUser({ shippingAddress: shipping });
@@ -534,11 +552,37 @@ export default function CheckoutPage() {
                           </div>
                         </div>
 
-                        {isSelected && (
-                          <div className="shrink-0 self-start sm:self-auto flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-50 px-2.5 py-1 rounded-lg border border-green-200">
-                            <CheckCircle size={12} /> Selected
-                          </div>
-                        )}
+                        <div className="shrink-0 self-start sm:self-auto flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedAddressIndex(idx);
+                              setIsEditingAddress(true);
+                              setShipping({
+                                firstName: addr.firstName || "",
+                                lastName: addr.lastName || "",
+                                email: addr.email || user?.email || "",
+                                phoneNumber: addr.phoneNumber || "",
+                                houseOrBuilding: addr.houseOrBuilding || addr.streetAddress || "",
+                                roadAreaColony: addr.roadAreaColony || "",
+                                landmark: addr.landmark || "",
+                                city: addr.city || "",
+                                state: addr.state || "",
+                                postalCode: addr.postalCode || "",
+                              });
+                            }}
+                            className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-100 hover:border-black transition"
+                          >
+                            <Edit2 size={12} />
+                            Edit Address
+                          </button>
+                          {isSelected && (
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-50 px-2.5 py-1 rounded-lg border border-green-200">
+                              <CheckCircle size={12} /> Selected
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

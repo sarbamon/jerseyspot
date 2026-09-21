@@ -127,16 +127,21 @@ export default function AccountAddressPage() {
     setMessage(null);
 
     try {
+      const fullStreet = address.houseOrBuilding 
+        ? `${address.houseOrBuilding}, ${address.roadAreaColony}${address.landmark ? `, ${address.landmark}` : ''}`
+        : (address.roadAreaColony || "");
+      const fullAddress = { ...address, streetAddress: fullStreet };
+
       let updatedList: any[] = [...savedAddresses];
       if (editingIndex === "new") {
-        updatedList.push({ ...address });
+        updatedList.push(fullAddress);
       } else if (typeof editingIndex === "number") {
-        updatedList[editingIndex] = { ...address };
+        updatedList[editingIndex] = fullAddress;
       }
 
       const res = await updateUserProfile({
         shippingAddresses: updatedList,
-        shippingAddress: address
+        shippingAddress: fullAddress
       });
 
       if (res.success && res.user) {

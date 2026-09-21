@@ -358,7 +358,7 @@ export default function AdminOrdersPage() {
         : (order.shippingAddress?.streetAddress || ""),
       pincode: order.shippingAddress?.postalCode || "",
       city: order.shippingAddress?.city || "",
-      state: "MH", // Default
+      state: order.shippingAddress?.state || "MH",
       weight: 500,
       length: 25,
       breadth: 10,

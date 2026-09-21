@@ -460,10 +460,10 @@ export default function OrderDetailsPage() {
                 <p className="font-semibold text-black">{order.shippingAddress?.firstName} {order.shippingAddress?.lastName}</p>
                 <p className="mt-1">
                   {order.shippingAddress?.houseOrBuilding 
-                    ? `${order.shippingAddress?.houseOrBuilding}, ${order.shippingAddress?.roadAreaColony}${order.shippingAddress?.landmark ? `, ${order.shippingAddress?.landmark}` : ""}` 
-                    : order.shippingAddress?.streetAddress}
+                    ? `${order.shippingAddress?.houseOrBuilding}${order.shippingAddress?.roadAreaColony ? `, ${order.shippingAddress?.roadAreaColony}` : ""}${order.shippingAddress?.landmark ? `, (Near: ${order.shippingAddress?.landmark})` : ""}` 
+                    : (order.shippingAddress?.streetAddress || order.shippingAddress?.roadAreaColony)}
                 </p>
-                <p>{order.shippingAddress?.city}, {order.shippingAddress?.postalCode}</p>
+                <p>{order.shippingAddress?.city}{order.shippingAddress?.state ? `, ${order.shippingAddress?.state}` : ""} - {order.shippingAddress?.postalCode}</p>
                 <p className="mt-1">Phone: {order.shippingAddress?.phoneNumber}</p>
                 <p>Email: {order.shippingAddress?.email}</p>
               </div>
