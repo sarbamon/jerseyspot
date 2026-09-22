@@ -50,7 +50,7 @@ export default async function ShopPage({
   }
   const categories = siteCategories;
 
-  let queryStr = "?limit=35&";
+  let queryStr = "?limit=75&";
   if (category) queryStr += `category=${category}&`;
   if (sort) queryStr += `sort=${sort}&`;
   if (page) queryStr += `page=${page}&`;
