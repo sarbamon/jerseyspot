@@ -98,7 +98,7 @@ export default async function SearchPage({
                           alt={product.name}
                           fill
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                          className={`object-cover transition duration-500 group-hover:scale-105 ${
+                          className={`object-contain transition duration-500 group-hover:scale-105 ${
                             isOutOfStock ? "opacity-75" : ""
                           }`}
                         />

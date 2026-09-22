@@ -101,7 +101,7 @@ export default function AccountDashboard() {
             {recommended.map((product) => (
               <Link key={product._id} href={`/shop/${product.slug}`} className="group block border border-gray-200 bg-white p-4 hover:border-black transition">
                 <div className="relative aspect-[3/4] mb-3 bg-gray-100 overflow-hidden">
-                  <Image src={product.image} alt={product.name} fill className="object-cover group-hover:scale-105 transition duration-500" />
+                  <Image src={product.image} alt={product.name} fill className="object-contain group-hover:scale-105 transition duration-500" />
                 </div>
                 <h4 className="text-xs font-bold line-clamp-1">{product.name}</h4>
                 <p className="text-xs text-gray-500 mt-1">₹{product.price.toLocaleString("en-IN")}</p>

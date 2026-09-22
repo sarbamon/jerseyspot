@@ -329,7 +329,7 @@ export default function AdminProductTable({
                           alt={product.name}
                           fill
                           sizes="48px"
-                          className="object-cover"
+                          className="object-contain"
                         />
                       </div>
                       <div>

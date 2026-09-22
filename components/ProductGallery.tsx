@@ -79,7 +79,7 @@ export default function ProductGallery({
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="object-contain transition-transform duration-500 group-hover:scale-105"
           />
 
           {/* Discount Badge */}
@@ -114,7 +114,7 @@ export default function ProductGallery({
                   alt={`${name} thumbnail ${idx + 1}`}
                   fill
                   sizes="(max-width: 1024px) 25vw, 12vw"
-                  className="object-cover"
+                  className="object-contain"
                 />
               </button>
             ))}
@@ -235,7 +235,7 @@ export default function ProductGallery({
                       : "opacity-50 hover:opacity-100"
                   }`}
                 >
-                  <Image src={img} alt={`thumb ${idx + 1}`} fill sizes="48px" className="object-cover" />
+                  <Image src={img} alt={`thumb ${idx + 1}`} fill sizes="48px" className="object-contain" />
                 </button>
               ))}
             </div>
