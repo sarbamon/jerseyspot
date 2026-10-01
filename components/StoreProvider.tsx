@@ -129,7 +129,15 @@ export function StoreProvider({
       "jerseyspot-wishlist",
       JSON.stringify(wishlist)
     );
-  }, [wishlist, isInitialized]);
+
+    if (isAuthenticated) {
+      import("@/lib/api").then((m) => {
+        m.updateUserProfile({
+          wishlist: wishlist.map((p) => p._id),
+        }).catch(() => {});
+      });
+    }
+  }, [wishlist, isInitialized, isAuthenticated]);
 
   const addToCart = (
     product: StoreProduct,

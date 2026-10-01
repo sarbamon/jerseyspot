@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { getUsers, adminResetUserPassword } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { Search, Key, Eye, EyeOff, RefreshCw, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Search, Key, Eye, EyeOff, RefreshCw, X, CheckCircle2, AlertCircle, Heart, ExternalLink } from "lucide-react";
 
 export default function AdminCustomersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Modal State for Password Reset
+  // Modal State for Password Reset & Wishlist
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [wishlistModalUser, setWishlistModalUser] = useState<any | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -194,13 +195,24 @@ export default function AdminCustomersPage() {
                     {formatDate(user.createdAt)}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleOpenResetModal(user)}
-                      className="inline-flex items-center space-x-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-black hover:text-white hover:border-black"
-                    >
-                      <Key className="h-3.5 w-3.5" />
-                      <span>Reset Password</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setWishlistModalUser(user)}
+                        className="inline-flex items-center space-x-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-600 hover:text-white hover:border-rose-600"
+                        title="View user wishlist"
+                      >
+                        <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
+                        <span>Wishlist ({user.wishlist?.length || 0})</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenResetModal(user)}
+                        className="inline-flex items-center space-x-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-black hover:text-white hover:border-black"
+                      >
+                        <Key className="h-3.5 w-3.5" />
+                        <span>Reset Password</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -301,6 +313,81 @@ export default function AdminCustomersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Wishlist Modal */}
+      {wishlistModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl transition-all max-h-[85vh] flex flex-col border border-gray-100">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="flex items-center space-x-2 text-black">
+                <Heart className="h-5 w-5 text-rose-500 fill-rose-500" />
+                <h2 className="text-lg font-bold">User Wishlist</h2>
+              </div>
+              <button
+                onClick={() => setWishlistModalUser(null)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-700 border border-gray-200">
+              <p><span className="font-bold text-gray-900">Customer:</span> {wishlistModalUser.name}</p>
+              <p><span className="font-bold text-gray-900">Email:</span> {wishlistModalUser.email}</p>
+              <p><span className="font-bold text-gray-900">Items in Wishlist:</span> {wishlistModalUser.wishlist?.length || 0}</p>
+            </div>
+
+            <div className="mt-4 flex-1 overflow-y-auto space-y-3 pr-1">
+              {wishlistModalUser.wishlist && wishlistModalUser.wishlist.length > 0 ? (
+                wishlistModalUser.wishlist.map((item: any, idx: number) => {
+                  const productImg = typeof item === "object" ? (item.image || (item.images && item.images[0]) || "/placeholder.png") : "/placeholder.png";
+                  const productName = typeof item === "object" ? item.name : `Product ID: ${item}`;
+                  const productPrice = typeof item === "object" ? (item.salePrice || item.price) : null;
+                  const productSlug = typeof item === "object" ? item.slug : null;
+
+                  return (
+                    <div key={idx} className="flex items-center gap-3 border border-gray-200 rounded-lg p-3 bg-white hover:bg-gray-50 transition shadow-sm">
+                      <div className="h-16 w-16 shrink-0 rounded-md bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                        <img src={productImg} alt={productName} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm text-gray-900 truncate" title={productName}>{productName}</h4>
+                        {productPrice && (
+                          <p className="text-xs font-semibold text-gray-700 mt-1">₹{productPrice.toLocaleString("en-IN")}</p>
+                        )}
+                        {productSlug && (
+                          <a
+                            href={`/shop/${productSlug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline"
+                          >
+                            <ExternalLink size={12} /> View Product Page
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-12 text-center text-gray-500">
+                  <Heart size={36} className="mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm font-medium">This customer has no items in their wishlist.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 border-t pt-4 flex justify-end">
+              <button
+                onClick={() => setWishlistModalUser(null)}
+                className="rounded-lg bg-black px-5 py-2 text-xs font-bold text-white uppercase tracking-wider hover:bg-gray-800 transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

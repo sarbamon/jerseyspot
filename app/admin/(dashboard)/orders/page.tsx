@@ -619,8 +619,9 @@ export default function AdminOrdersPage() {
       const idMatch = displayId.includes(query);
       const nameMatch = `${order.shippingAddress?.firstName || ""} ${order.shippingAddress?.lastName || ""}`.toLowerCase().includes(query);
       const dateMatch = formatDate(order.createdAt).includes(query);
+      const couponMatch = order.couponCode?.toLowerCase().includes(query);
       
-      if (!idMatch && !nameMatch && !dateMatch) return false;
+      if (!idMatch && !nameMatch && !dateMatch && !couponMatch) return false;
     }
 
     return true;
@@ -821,8 +822,22 @@ export default function AdminOrdersPage() {
                           </button>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-black">
-                        ₹{order.totalPrice.toLocaleString("en-IN")}
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-black">
+                          ₹{order.totalPrice.toLocaleString("en-IN")}
+                        </div>
+                        {order.couponCode ? (
+                          <div className="mt-1 flex items-center gap-1">
+                            <span className="inline-flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 border border-green-200" title={`Coupon Code: ${order.couponCode}`}>
+                              🏷️ {order.couponCode}
+                              {order.discountAmount > 0 ? ` (-₹${order.discountAmount.toLocaleString("en-IN")})` : ""}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-[10px] text-gray-400 font-medium">
+                            No Coupon
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {order.isPaid ? (
@@ -1310,6 +1325,16 @@ export default function AdminOrdersPage() {
               <div>
                 <span className="font-bold text-black">Payment:</span> {viewProductsModalOrder.isPaid ? <span className="text-green-700 font-bold">Paid</span> : <span className="text-yellow-700 font-bold">Pending</span>} ({viewProductsModalOrder.paymentMethod})
               </div>
+              <div>
+                <span className="font-bold text-black">Coupon:</span>{" "}
+                {viewProductsModalOrder.couponCode ? (
+                  <span className="font-bold text-green-800 bg-green-100 px-2 py-0.5 rounded border border-green-300">
+                    🏷️ {viewProductsModalOrder.couponCode} (-₹{(viewProductsModalOrder.discountAmount || 0).toLocaleString("en-IN")})
+                  </span>
+                ) : (
+                  <span className="text-gray-500 font-medium">No Coupon Used</span>
+                )}
+              </div>
             </div>
 
             {/* Products List */}
@@ -1388,15 +1413,22 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Summary Footer */}
-            <div className="mt-4 border-t pt-4 flex items-center justify-between">
+            <div className="mt-4 border-t pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div className="text-xs text-gray-500">
                 Total Items: <span className="font-bold text-black">{viewProductsModalOrder.orderItems?.reduce((acc: number, curr: any) => acc + (curr.quantity || 1), 0)} units</span>
               </div>
               <div className="text-right">
-                <span className="text-xs text-gray-500 mr-2">Order Total:</span>
-                <span className="font-serif text-lg font-bold text-black">
-                  ₹{(viewProductsModalOrder.totalPrice || 0).toLocaleString("en-IN")}
-                </span>
+                {viewProductsModalOrder.discountAmount > 0 && (
+                  <div className="text-xs text-green-600 font-bold mb-0.5">
+                    Discount Applied ({viewProductsModalOrder.couponCode || "Coupon"}): -₹{(viewProductsModalOrder.discountAmount || 0).toLocaleString("en-IN")}
+                  </div>
+                )}
+                <div>
+                  <span className="text-xs text-gray-500 mr-2">Order Total:</span>
+                  <span className="font-serif text-lg font-bold text-black">
+                    ₹{(viewProductsModalOrder.totalPrice || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
               </div>
             </div>
             
