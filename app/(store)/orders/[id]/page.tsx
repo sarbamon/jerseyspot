@@ -172,15 +172,36 @@ export default function OrderDetailsPage() {
       </div>
 
       <div className="mx-auto max-w-2xl mt-2 space-y-2">
-        {/* Item Summary */}
-        <div className="bg-white p-4 flex gap-4">
-          <div className="h-16 w-16 shrink-0 rounded-lg bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
-            <img src={mainItem.image || "/placeholder.png"} alt={mainItem.name} className="max-h-full max-w-full object-contain mix-blend-multiply" />
-          </div>
-          <div className="flex flex-col justify-center">
-            <h3 className="text-sm font-medium text-gray-900 line-clamp-1">{mainItem.name}</h3>
-            <p className="text-xs text-gray-500 mt-1">Size: {mainItem.size} • Qty: {mainItem.quantity}</p>
-          </div>
+        {/* Item Summary - Renders all products in order */}
+        <div className="bg-white p-4 space-y-3 divide-y divide-gray-100">
+          {order.orderItems && order.orderItems.length > 0 ? (
+            order.orderItems.map((item: any, idx: number) => (
+              <div key={idx} className={`flex gap-4 ${idx > 0 ? "pt-3" : ""}`}>
+                <div className="h-16 w-16 shrink-0 rounded-lg bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
+                  <img src={item.image || "/placeholder.png"} alt={item.name} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                </div>
+                <div className="flex flex-col justify-center flex-1">
+                  <h3 className="text-sm font-medium text-gray-900 line-clamp-1">{item.name}</h3>
+                  <p className="text-xs text-gray-500 mt-1">Size: {item.size} • Qty: {item.quantity}</p>
+                </div>
+                {item.price && (
+                  <div className="flex flex-col justify-center items-end">
+                    <span className="text-sm font-semibold text-gray-900">₹{(item.price * item.quantity).toLocaleString("en-IN")}</span>
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="flex gap-4">
+              <div className="h-16 w-16 shrink-0 rounded-lg bg-gray-50 flex items-center justify-center p-1 border border-gray-100">
+                <img src={mainItem.image || "/placeholder.png"} alt={mainItem.name} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+              </div>
+              <div className="flex flex-col justify-center">
+                <h3 className="text-sm font-medium text-gray-900 line-clamp-1">{mainItem.name}</h3>
+                <p className="text-xs text-gray-500 mt-1">Size: {mainItem.size} • Qty: {mainItem.quantity}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Order ID */}
