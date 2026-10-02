@@ -146,9 +146,12 @@ export default function OrderDetailsPage() {
     "Delivered"
   ];
 
-  const currentStatus = order.deliveryStatus || (order.isDelivered ? "Delivered" : "Order Received");
-  const isCancelled = currentStatus === "Cancelled" || order.isCancelled;
-  const isDelivered = currentStatus === "Delivered" || order.isDelivered;
+  const isCancelled = order.deliveryStatus === "Cancelled" || order.isCancelled;
+  const isDelivered = order.deliveryStatus === "Delivered" || order.isDelivered;
+  const isPaymentFailed = !order.isPaid && !isCancelled;
+  const currentStatus = isPaymentFailed 
+    ? "Payment Failed" 
+    : (order.deliveryStatus || (isDelivered ? "Delivered" : "Order Received"));
 
   let currentStageIdx = STAGES.findIndex(
     (s) => s.toLowerCase() === currentStatus.toLowerCase()
@@ -159,7 +162,7 @@ export default function OrderDetailsPage() {
     else currentStageIdx = 0;
   }
 
-  const progressPercent = isCancelled ? 100 : (currentStageIdx / (STAGES.length - 1)) * 100;
+  const progressPercent = isCancelled || isPaymentFailed ? 100 : (currentStageIdx / (STAGES.length - 1)) * 100;
 
   return (
     <main className="min-h-screen bg-gray-100 pb-20 text-black font-sans selection:bg-black selection:text-white">
@@ -172,6 +175,23 @@ export default function OrderDetailsPage() {
       </div>
 
       <div className="mx-auto max-w-2xl mt-2 space-y-2">
+        {/* Payment Failed Banner */}
+        {isPaymentFailed && (
+          <div className="mx-4 mt-2 bg-red-50 border border-red-200 rounded-xl p-4 text-red-900 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-red-100 p-2 text-red-600 shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-sm text-red-900">Payment Failed / Pending</h3>
+                <p className="text-xs text-red-700 mt-1">
+                  Payment for this order was not completed.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Item Summary - Renders all products in order */}
         <div className="bg-white p-4 space-y-3 divide-y divide-gray-100">
           {order.orderItems && order.orderItems.length > 0 ? (
@@ -216,12 +236,14 @@ export default function OrderDetailsPage() {
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg text-gray-900">
-              {isCancelled ? "Order Cancelled" : isDelivered ? "Order Delivered" : currentStatus}
+              {isCancelled ? "Order Cancelled" : isDelivered ? "Order Delivered" : isPaymentFailed ? "Payment Failed" : currentStatus}
             </h2>
             {isCancelled ? (
               <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-200">Cancelled</span>
             ) : isDelivered ? (
               <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full border border-green-200">Delivered</span>
+            ) : isPaymentFailed ? (
+              <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-300">Payment Failed</span>
             ) : (
               <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full border border-blue-200">{currentStatus}</span>
             )}
@@ -240,6 +262,13 @@ export default function OrderDetailsPage() {
                   </p>
                 )}
               </div>
+            ) : isPaymentFailed ? (
+              <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-xs font-medium space-y-1">
+                <div className="flex items-center gap-2 font-bold">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span>Payment for this order was not completed.</span>
+                </div>
+              </div>
             ) : (
               <div>
                 <span>Status: <strong className="text-gray-900">{currentStatus}</strong></span>
@@ -247,151 +276,155 @@ export default function OrderDetailsPage() {
             )}
           </div>
 
-          {/* Horizontal Progress Bar */}
-          <div className="relative mb-6 px-1">
-            <div className="absolute top-2.5 left-[12px] right-[12px]">
-              <div className={`absolute top-0 left-0 w-full h-1 z-0 ${isCancelled ? 'bg-red-200' : 'bg-gray-200'}`}></div>
-              <div 
-                className={`absolute top-0 left-0 h-1 z-0 transition-all duration-500 ${isCancelled ? 'bg-red-600' : 'bg-green-600'}`} 
-                style={{ width: `${progressPercent}%` }}
-              ></div>
-            </div>
-            
-            <div className="relative z-10 flex justify-between">
-              {STAGES.map((_, idx) => {
-                const isPassed = !isCancelled && idx <= currentStageIdx;
-                const isCurrent = !isCancelled && idx === currentStageIdx;
-                return (
-                  <div key={idx} className="flex flex-col items-center">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${
-                      isCancelled 
-                        ? (idx === currentStageIdx || idx === STAGES.length - 1 ? 'bg-red-600 text-white font-bold' : 'bg-red-100 text-red-400')
-                        : isCurrent
-                          ? 'bg-green-600 text-white font-bold ring-4 ring-green-100 scale-110'
-                          : isPassed
-                            ? 'bg-green-600 text-white'
-                            : 'bg-white border-2 border-gray-300 text-gray-400'
-                    }`}>
-                      {isCancelled && (idx === currentStageIdx || idx === STAGES.length - 1) ? '✕' : isPassed ? '✓' : idx + 1}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Vertical Detailed Stages Stepper */}
-          <div className="mt-6 border-t border-gray-100 pt-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Order Status Stages</h3>
-            <div className="space-y-3 pl-1">
-              {STAGES.map((stageName, idx) => {
-                const isPassed = !isCancelled && idx <= currentStageIdx;
-                const isCurrent = !isCancelled && idx === currentStageIdx;
-                
-                return (
-                  <div key={idx} className="flex items-start gap-3 text-xs">
-                    <div className="relative flex flex-col items-center">
-                      <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
-                        isPassed 
-                          ? 'bg-green-600 text-white font-bold' 
-                          : 'bg-gray-100 text-gray-400 border border-gray-300'
-                      }`}>
-                        {isPassed ? '✓' : idx + 1}
-                      </div>
-                      {idx < STAGES.length - 1 && (
-                        <div className={`w-0.5 h-4 my-0.5 ${isPassed && idx < currentStageIdx ? 'bg-green-600' : 'bg-gray-200'}`} />
-                      )}
-                    </div>
-                    <div className="pt-0.5">
-                      <span className={`font-semibold ${isCurrent ? 'text-green-700 font-bold text-sm' : isPassed ? 'text-gray-900' : 'text-gray-400'}`}>
-                        {stageName}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {isCancelled && (
-                <div className="flex items-start gap-3 text-xs pt-1">
-                  <div className="h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold">
-                    ✕
-                  </div>
-                  <div className="pt-0.5">
-                    <span className="font-bold text-red-600 text-sm">Cancelled</span>
-                    <span className="ml-2 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold">Order Cancelled</span>
-                  </div>
+          {!isPaymentFailed && (
+            <>
+              {/* Horizontal Progress Bar */}
+              <div className="relative mb-6 px-1">
+                <div className="absolute top-2.5 left-[12px] right-[12px]">
+                  <div className={`absolute top-0 left-0 w-full h-1 z-0 ${isCancelled ? 'bg-red-200' : 'bg-gray-200'}`}></div>
+                  <div 
+                    className={`absolute top-0 left-0 h-1 z-0 transition-all duration-500 ${isCancelled ? 'bg-red-600' : 'bg-green-600'}`} 
+                    style={{ width: `${progressPercent}%` }}
+                  ></div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Expected Delivery Date Banner */}
-          {(trackingData?.expectedDeliveryDate || order.expectedDeliveryDate) && !isDelivered && !isCancelled && (
-            <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs flex items-center gap-3 text-blue-900">
-              <span className="text-xl">📅</span>
-              <div>
-                <span className="font-bold text-xs uppercase tracking-wider text-blue-700 block">Expected Delivery Date</span>
-                <span className="text-sm font-extrabold text-blue-950">
-                  {trackingData?.expectedDeliveryDate || order.expectedDeliveryDate}
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 flex gap-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            <div className="w-full">
-              {trackingData && trackingData.details && trackingData.details.length > 0 ? (
-                <>
-                  <span className="block font-bold mb-1">Live Updates:</span>
-                  <span className="block mb-2 text-gray-700 font-medium">Courier: {trackingData.courierName} {trackingData.status ? `(${trackingData.status})` : ""}</span>
-                  {(trackingData.expectedDeliveryDate || order.expectedDeliveryDate) && (
-                    <span className="block mb-2 text-blue-800 font-bold">Est. Delivery: {trackingData.expectedDeliveryDate || order.expectedDeliveryDate}</span>
-                  )}
-                  {trackingData.details.slice(0, 1).map((event: any, idx: number) => {
-                    const dateStr = formatTrackingDate(event.datetime || event.date || event.time || event.timestamp);
-                    const notesStr = event.notes || event.status || event.activity || "";
-                    const locationStr = event.location ? ` (${event.location})` : "";
+                
+                <div className="relative z-10 flex justify-between">
+                  {STAGES.map((_, idx) => {
+                    const isPassed = !isCancelled && idx <= currentStageIdx;
+                    const isCurrent = !isCancelled && idx === currentStageIdx;
                     return (
-                      <span key={idx} className="block mb-1">
-                        {dateStr ? <span className="font-semibold text-gray-800">{dateStr}: </span> : null}
-                        <span>{notesStr}{locationStr}</span>
-                      </span>
+                      <div key={idx} className="flex flex-col items-center">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${
+                          isCancelled 
+                            ? (idx === currentStageIdx || idx === STAGES.length - 1 ? 'bg-red-600 text-white font-bold' : 'bg-red-100 text-red-400')
+                            : isCurrent
+                              ? 'bg-green-600 text-white font-bold ring-4 ring-green-100 scale-110'
+                              : isPassed
+                                ? 'bg-green-600 text-white'
+                                : 'bg-white border-2 border-gray-300 text-gray-400'
+                        }`}>
+                          {isCancelled && (idx === currentStageIdx || idx === STAGES.length - 1) ? '✕' : isPassed ? '✓' : idx + 1}
+                        </div>
+                      </div>
                     );
                   })}
-                </>
-              ) : order.trackingNumber ? (
-                <div className="space-y-1">
-                  <span className="block font-bold text-black text-xs">Tracking Details:</span>
-                  <div className="text-gray-700">
-                    <span className="font-semibold">Courier:</span> {order.courierName || trackingData?.courierName || "Standard Shipping"}
-                  </div>
-                  {order.expectedDeliveryDate && (
-                    <div className="text-blue-800 font-bold">
-                      <span className="font-semibold">Expected Delivery:</span> {order.expectedDeliveryDate}
-                    </div>
-                  )}
-                  <div className="text-gray-700 font-mono">
-                    <span className="font-semibold font-sans">Tracking ID / AWB:</span> {order.trackingNumber}
-                  </div>
-                  {(order.trackingUrl || trackingData?.trackingUrl) && (
-                    <div className="pt-1">
-                      <a
-                        href={order.trackingUrl || trackingData?.trackingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 underline hover:text-blue-800"
-                      >
-                        Track Package directly on Courier Site ↗
-                      </a>
+                </div>
+              </div>
+
+              {/* Vertical Detailed Stages Stepper */}
+              <div className="mt-6 border-t border-gray-100 pt-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Order Status Stages</h3>
+                <div className="space-y-3 pl-1">
+                  {STAGES.map((stageName, idx) => {
+                    const isPassed = !isCancelled && idx <= currentStageIdx;
+                    const isCurrent = !isCancelled && idx === currentStageIdx;
+                    
+                    return (
+                      <div key={idx} className="flex items-start gap-3 text-xs">
+                        <div className="relative flex flex-col items-center">
+                          <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
+                            isPassed 
+                              ? 'bg-green-600 text-white font-bold' 
+                              : 'bg-gray-100 text-gray-400 border border-gray-300'
+                          }`}>
+                            {isPassed ? '✓' : idx + 1}
+                          </div>
+                          {idx < STAGES.length - 1 && (
+                            <div className={`w-0.5 h-4 my-0.5 ${isPassed && idx < currentStageIdx ? 'bg-green-600' : 'bg-gray-200'}`} />
+                          )}
+                        </div>
+                        <div className="pt-0.5">
+                          <span className={`font-semibold ${isCurrent ? 'text-green-700 font-bold text-sm' : isPassed ? 'text-gray-900' : 'text-gray-400'}`}>
+                            {stageName}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {isCancelled && (
+                    <div className="flex items-start gap-3 text-xs pt-1">
+                      <div className="h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold">
+                        ✕
+                      </div>
+                      <div className="pt-0.5">
+                        <span className="font-bold text-red-600 text-sm">Cancelled</span>
+                        <span className="ml-2 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold">Order Cancelled</span>
+                      </div>
                     </div>
                   )}
                 </div>
-              ) : (
-                <p>Delivery Executive details will be available once your order is picked up by our delivery partner. The estimated delivery date will be updated based on the courier partner's tracking.</p>
+              </div>
+
+              {/* Expected Delivery Date Banner */}
+              {(trackingData?.expectedDeliveryDate || order.expectedDeliveryDate) && !isDelivered && !isCancelled && (
+                <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs flex items-center gap-3 text-blue-900">
+                  <span className="text-xl">📅</span>
+                  <div>
+                    <span className="font-bold text-xs uppercase tracking-wider text-blue-700 block">Expected Delivery Date</span>
+                    <span className="text-sm font-extrabold text-blue-950">
+                      {trackingData?.expectedDeliveryDate || order.expectedDeliveryDate}
+                    </span>
+                  </div>
+                </div>
               )}
-            </div>
-          </div>
+
+              <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 flex gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <div className="w-full">
+                  {trackingData && trackingData.details && trackingData.details.length > 0 ? (
+                    <>
+                      <span className="block font-bold mb-1">Live Updates:</span>
+                      <span className="block mb-2 text-gray-700 font-medium">Courier: {trackingData.courierName} {trackingData.status ? `(${trackingData.status})` : ""}</span>
+                      {(trackingData.expectedDeliveryDate || order.expectedDeliveryDate) && (
+                        <span className="block mb-2 text-blue-800 font-bold">Est. Delivery: {trackingData.expectedDeliveryDate || order.expectedDeliveryDate}</span>
+                      )}
+                      {trackingData.details.slice(0, 1).map((event: any, idx: number) => {
+                        const dateStr = formatTrackingDate(event.datetime || event.date || event.time || event.timestamp);
+                        const notesStr = event.notes || event.status || event.activity || "";
+                        const locationStr = event.location ? ` (${event.location})` : "";
+                        return (
+                          <span key={idx} className="block mb-1">
+                            {dateStr ? <span className="font-semibold text-gray-800">{dateStr}: </span> : null}
+                            <span>{notesStr}{locationStr}</span>
+                          </span>
+                        );
+                      })}
+                    </>
+                  ) : order.trackingNumber ? (
+                    <div className="space-y-1">
+                      <span className="block font-bold text-black text-xs">Tracking Details:</span>
+                      <div className="text-gray-700">
+                        <span className="font-semibold">Courier:</span> {order.courierName || trackingData?.courierName || "Standard Shipping"}
+                      </div>
+                      {order.expectedDeliveryDate && (
+                        <div className="text-blue-800 font-bold">
+                          <span className="font-semibold">Expected Delivery:</span> {order.expectedDeliveryDate}
+                        </div>
+                      )}
+                      <div className="text-gray-700 font-mono">
+                        <span className="font-semibold font-sans">Tracking ID / AWB:</span> {order.trackingNumber}
+                      </div>
+                      {(order.trackingUrl || trackingData?.trackingUrl) && (
+                        <div className="pt-1">
+                          <a
+                            href={order.trackingUrl || trackingData?.trackingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 underline hover:text-blue-800"
+                          >
+                            Track Package directly on Courier Site ↗
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p>Delivery Executive details will be available once your order is picked up by our delivery partner. The estimated delivery date will be updated based on the courier partner's tracking.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
           
           {trackingData && trackingData.details && trackingData.details.length > 0 && showAllUpdates ? (
             <div className="mt-4 border-t border-gray-100 pt-4 text-left">

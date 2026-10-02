@@ -81,13 +81,18 @@ export default function MyOrdersPage() {
     // Search by Order ID or Product Name
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      const idMatch = order._id.toLowerCase().includes(term);
+      const idMatch = order._id.toLowerCase().includes(term) || (order.customOrderId && order.customOrderId.toLowerCase().includes(term));
       const nameMatch = order.orderItems?.some((item: any) => item.name?.toLowerCase().includes(term));
       if (!idMatch && !nameMatch) return false;
     }
     const isDelivered = order.deliveryStatus === "Delivered" || order.isDelivered;
-    if (activeTab === "active" && isDelivered) return false;
+    const isCancelled = order.deliveryStatus === "Cancelled" || order.isCancelled;
+    const isPaymentFailed = !order.isPaid && !isCancelled;
+
+    if (activeTab === "active" && (isDelivered || isPaymentFailed || isCancelled)) return false;
     if (activeTab === "history" && !isDelivered) return false;
+    if (activeTab === "failed" && !isPaymentFailed) return false;
+    if (activeTab === "cancelled" && !isCancelled) return false;
     return true;
   });
 
@@ -178,6 +183,12 @@ export default function MyOrdersPage() {
           >
             Delivered
           </button>
+          <button 
+            onClick={() => setActiveTab("failed")}
+            className={`shrink-0 rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${activeTab === 'failed' ? 'bg-red-600 text-white' : 'border border-red-200 bg-red-50 text-red-700'}`}
+          >
+            Payment Failed
+          </button>
         </div>
 
         {filteredOrders.length === 0 ? (
@@ -192,17 +203,23 @@ export default function MyOrdersPage() {
               const mainItem = order.orderItems[0] || {};
               const isCancelled = order.deliveryStatus === "Cancelled" || order.isCancelled;
               const isDelivered = order.deliveryStatus === "Delivered" || order.isDelivered;
+              const isPaymentFailed = !order.isPaid && !isCancelled;
+
               const badgeStyle = isCancelled 
                 ? "bg-red-50 text-red-600 border border-red-200" 
                 : isDelivered 
                   ? "bg-green-50 text-green-700 border border-green-200" 
-                  : order.isPaid 
-                    ? "bg-blue-50 text-blue-700 border border-blue-200" 
-                    : "bg-gray-50 text-gray-700 border border-gray-200";
+                  : isPaymentFailed
+                    ? "bg-red-100 text-red-700 border border-red-300"
+                    : order.isPaid 
+                      ? "bg-blue-50 text-blue-700 border border-blue-200" 
+                      : "bg-gray-50 text-gray-700 border border-gray-200";
 
               const statusText = isCancelled 
                 ? "Cancelled" 
-                : order.deliveryStatus || (isDelivered ? "Delivered" : order.isPaid ? "Order Received" : "Payment Pending");
+                : isPaymentFailed
+                  ? "Payment Failed"
+                  : order.deliveryStatus || (isDelivered ? "Delivered" : "Order Received");
 
               return (
                 <Link 

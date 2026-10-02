@@ -609,8 +609,13 @@ export default function AdminOrdersPage() {
   const filteredOrders = orders.filter((order: any) => {
     // 1. Tab filter
     const isDelivered = order.deliveryStatus === "Delivered" || order.isDelivered;
-    if (activeTab === "active" && isDelivered) return false;
-    if (activeTab === "history" && !isDelivered) return false;
+    const isCancelled = order.deliveryStatus === "Cancelled" || order.isCancelled;
+    const isPaymentFailed = !order.isPaid && !isCancelled;
+
+    if (activeTab === "active" && (isDelivered || isCancelled || isPaymentFailed)) return false;
+    if (activeTab === "history" && (!isDelivered || !order.isPaid)) return false;
+    if (activeTab === "failed" && !isPaymentFailed) return false;
+    if (activeTab === "cancelled" && !isCancelled) return false;
 
     // 2. Search filter
     if (searchQuery) {
@@ -639,10 +644,10 @@ export default function AdminOrdersPage() {
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         
         {/* Tabs */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-gray-200 overflow-x-auto hide-scrollbar">
           <button
             onClick={() => { setActiveTab("active"); setSelectedOrders([]); }}
-            className={`px-4 py-2 font-bold uppercase tracking-wider text-xs transition-colors ${
+            className={`px-4 py-2 font-bold uppercase tracking-wider text-xs transition-colors shrink-0 ${
               activeTab === "active" ? "border-b-2 border-black text-black" : "text-gray-400 hover:text-black"
             }`}
           >
@@ -650,11 +655,19 @@ export default function AdminOrdersPage() {
           </button>
           <button
             onClick={() => { setActiveTab("history"); setSelectedOrders([]); }}
-            className={`px-4 py-2 font-bold uppercase tracking-wider text-xs transition-colors ${
+            className={`px-4 py-2 font-bold uppercase tracking-wider text-xs transition-colors shrink-0 ${
               activeTab === "history" ? "border-b-2 border-black text-black" : "text-gray-400 hover:text-black"
             }`}
           >
             History (Delivered)
+          </button>
+          <button
+            onClick={() => { setActiveTab("failed"); setSelectedOrders([]); }}
+            className={`px-4 py-2 font-bold uppercase tracking-wider text-xs transition-colors shrink-0 ${
+              activeTab === "failed" ? "border-b-2 border-amber-600 text-amber-600 font-bold" : "text-gray-400 hover:text-black"
+            }`}
+          >
+            Payment Failed
           </button>
         </div>
 
