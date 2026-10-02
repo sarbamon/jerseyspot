@@ -866,13 +866,15 @@ export default function AdminOrdersPage() {
                             Paid
                           </span>
                         ) : (
-                          <span className="rounded-full bg-yellow-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-800">
-                            Pending
+                          <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-red-800">
+                            Failed
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {order.trackingNumber ? (
+                        {!order.isPaid ? (
+                          <span className="text-xs text-gray-400 font-medium">N/A</span>
+                        ) : order.trackingNumber ? (
                           <div>
                             <div className="font-mono text-xs font-bold text-black">{order.trackingNumber}</div>
                             <div className="text-[10px] uppercase font-semibold text-gray-500">{order.courierName || "N/A"}</div>
@@ -954,31 +956,37 @@ export default function AdminOrdersPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <select
-                            value={order.deliveryStatus || (order.isDelivered ? "Delivered" : "Order Received")}
-                            onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                            className="rounded border border-gray-300 px-2 py-1 text-xs font-bold text-gray-700 outline-none focus:border-black"
-                          >
-                            <option value="Order Received">Order Received</option>
-                            <option value="Not Picked">Not Picked</option>
-                            <option value="Order Confirmed & Ready to Ship">Order Confirmed & Ready to Ship</option>
-                            <option value="Order Picked Up by Delivery Partner">Order Picked Up by Delivery Partner</option>
-                            <option value="In Transit">In Transit</option>
-                            <option value="Near You">Near You</option>
-                            <option value="Out for Delivery">Out for Delivery</option>
-                            <option value="Delivered">Delivered</option>
-                            <option value="Cancelled">Cancelled</option>
-                          </select>
-                          {order.shipmentId && (
-                            <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block w-max">
-                              ⚡ Auto-Synced iCarry
-                            </span>
-                          )}
-                        </div>
+                        {!order.isPaid ? (
+                          <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-red-800">
+                            Payment Failed
+                          </span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            <select
+                              value={order.deliveryStatus || (order.isDelivered ? "Delivered" : "Order Received")}
+                              onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                              className="rounded border border-gray-300 px-2 py-1 text-xs font-bold text-gray-700 outline-none focus:border-black"
+                            >
+                              <option value="Order Received">Order Received</option>
+                              <option value="Not Picked">Not Picked</option>
+                              <option value="Order Confirmed & Ready to Ship">Order Confirmed & Ready to Ship</option>
+                              <option value="Order Picked Up by Delivery Partner">Order Picked Up by Delivery Partner</option>
+                              <option value="In Transit">In Transit</option>
+                              <option value="Near You">Near You</option>
+                              <option value="Out for Delivery">Out for Delivery</option>
+                              <option value="Delivered">Delivered</option>
+                              <option value="Cancelled">Cancelled</option>
+                            </select>
+                            {order.shipmentId && (
+                              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block w-max">
+                                ⚡ Auto-Synced iCarry
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        {!order.isCancelled && order.deliveryStatus !== 'Cancelled' && (
+                        {!order.isCancelled && order.deliveryStatus !== 'Cancelled' && order.isPaid && (
                           <button
                             onClick={() => handleCancelOrder(order._id)}
                             className="text-[10px] font-bold uppercase tracking-wider text-orange-600 hover:text-orange-800 transition-colors"
