@@ -31,12 +31,17 @@ export default function AdminDashboardPage() {
         let fetchedOrders = [];
         
         if (ordersData && ordersData.orders) {
-           fetchedOrders = ordersData.orders;
-           fetchedOrders.forEach((o: any) => {
-             if (o.isPaid) {
-               totalRevenue += o.totalPrice;
-             }
-             if (o.deliveryStatus !== "Delivered") {
+           // Exclude payment failed orders from dashboard metrics and recent orders list
+           const paidOrders = ordersData.orders.filter((o: any) => o.isPaid);
+           fetchedOrders = paidOrders;
+           
+           paidOrders.forEach((o: any) => {
+             totalRevenue += o.totalPrice;
+             
+             const isDelivered = o.deliveryStatus === "Delivered" || o.isDelivered;
+             const isCancelled = o.deliveryStatus === "Cancelled" || o.isCancelled;
+             
+             if (!isDelivered && !isCancelled) {
                activeOrdersCount += 1;
              }
            });

@@ -83,17 +83,24 @@ function NotificationItem({
           onClick={closeDropdown}
           className="flex-1 flex items-start gap-3 p-4 hover:bg-gray-50 transition-colors"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${order.isPaid ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
             <ShoppingBag size={18} />
           </div>
           <div className="flex-1 min-w-0 pr-6">
-            <p className="text-sm font-medium text-gray-900">
-              {order.shippingAddress?.firstName} {order.shippingAddress?.lastName}
-            </p>
-            <p className="text-sm text-gray-500 truncate">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {order.shippingAddress?.firstName} {order.shippingAddress?.lastName}
+              </p>
+              {order.isPaid ? (
+                <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-800 uppercase">Paid</span>
+              ) : (
+                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-800 uppercase">Payment Failed</span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 truncate mt-0.5">
               ordered {displayName}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1">
               {formatDateTime(order.createdAt)}
             </p>
           </div>
@@ -192,9 +199,9 @@ export default function NotificationDropdown() {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.orders) {
-          // Filter out dismissed notifications
+          // Notify only paid orders & filter out dismissed notifications
           const savedDismissed = JSON.parse(localStorage.getItem('jerseyspot-dismissed-notifications') || '[]');
-          const activeOrders = data.orders.filter((o: Order) => !savedDismissed.includes(o._id));
+          const activeOrders = data.orders.filter((o: Order) => o.isPaid && !savedDismissed.includes(o._id));
           
           setOrders(activeOrders.slice(0, 5));
           
@@ -333,12 +340,15 @@ export default function NotificationDropdown() {
 
       {showToast && (
         <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-xl transition-all duration-300 animate-in slide-in-from-bottom-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
             <Bell className="h-5 w-5" />
           </div>
           <div>
-            <h4 className="font-semibold text-gray-900">New Order!</h4>
-            <p className="text-sm text-gray-500">A new order has just been placed.</p>
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-gray-900">New Paid Order!</h4>
+              <span className="rounded bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800 uppercase">Paid</span>
+            </div>
+            <p className="text-sm text-gray-500">A new confirmed paid order has just been placed.</p>
           </div>
           <button 
             onClick={() => setShowToast(false)}

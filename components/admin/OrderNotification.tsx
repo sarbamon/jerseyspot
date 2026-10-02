@@ -80,12 +80,15 @@ export default function OrderNotification() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-xl transition-all duration-300 animate-in slide-in-from-bottom-5">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
         <Bell className="h-5 w-5" />
       </div>
       <div>
-        <h4 className="font-semibold text-gray-900">New Order!</h4>
-        <p className="text-sm text-gray-500">A new order has just been placed.</p>
+        <div className="flex items-center gap-2">
+          <h4 className="font-semibold text-gray-900">New Paid Order!</h4>
+          <span className="rounded bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800 uppercase">Paid</span>
+        </div>
+        <p className="text-sm text-gray-500">A new confirmed paid order has just been placed.</p>
       </div>
       <button 
         onClick={() => setShowToast(false)}
