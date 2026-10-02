@@ -669,6 +669,14 @@ export default function AdminOrdersPage() {
           >
             Payment Failed
           </button>
+          <button
+            onClick={() => { setActiveTab("cancelled"); setSelectedOrders([]); }}
+            className={`px-4 py-2 font-bold uppercase tracking-wider text-xs transition-colors shrink-0 ${
+              activeTab === "cancelled" ? "border-b-2 border-red-600 text-red-600 font-bold" : "text-gray-400 hover:text-black"
+            }`}
+          >
+            Cancelled Orders
+          </button>
         </div>
 
         {/* Search & Sync Toolbar */}
