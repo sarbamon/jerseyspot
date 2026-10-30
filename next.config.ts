@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  staticPageGenerationTimeout: 180,
   experimental: {
     turbopackPluginRuntimeStrategy: "workerThreads",
+    cpus: 2,
   },
   images: {
     dangerouslyAllowLocalIP: true,

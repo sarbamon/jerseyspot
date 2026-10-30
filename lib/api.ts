@@ -8,10 +8,10 @@ export async function getProducts(params = "", noCache = false) {
   const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
 
   try {
-    const response = await fetch(
-      `${API_URL}/products${params}`,
-      fetchOptions
-    );
+    const response = await fetch(`${API_URL}/products${params}`, {
+      ...fetchOptions,
+      signal: AbortSignal.timeout(5000),
+    });
 
     if (!response.ok) {
       console.warn("Failed to fetch products:", response.status);
@@ -29,10 +29,10 @@ export async function getProduct(slug: string, noCache = false) {
   const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
 
   try {
-    const response = await fetch(
-      `${API_URL}/products/${slug}`,
-      fetchOptions
-    );
+    const response = await fetch(`${API_URL}/products/${slug}`, {
+      ...fetchOptions,
+      signal: AbortSignal.timeout(5000),
+    });
 
     if (!response.ok) {
       console.warn("Failed to fetch product:", slug, response.status);
@@ -336,7 +336,10 @@ export async function getSiteConfig(noCache = false) {
   const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
   
   try {
-    const response = await fetch(`${API_URL}/config/site`, fetchOptions);
+    const response = await fetch(`${API_URL}/config/site`, {
+      ...fetchOptions,
+      signal: AbortSignal.timeout(5000),
+    });
     
     if (!response.ok) {
       return { config: { deliveryCharge: 150 } };
@@ -457,14 +460,19 @@ export async function getAds(activeOnly = false, position?: string) {
   if (activeOnly) url += `activeOnly=true&`;
   if (position) url += `position=${position}&`;
   
-  const response = await fetch(url, {
-    next: { revalidate: 60 } // Cache for 60 seconds
-  });
-  
-  if (!response.ok) {
-    throw new Error("Failed to fetch ads");
+  try {
+    const response = await fetch(url, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(5000),
+    });
+    
+    if (!response.ok) {
+      return { success: false, ads: [] };
+    }
+    return await response.json();
+  } catch (err) {
+    return { success: false, ads: [] };
   }
-  return response.json();
 }
 
 export async function createAd(adData: any) {
