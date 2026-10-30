@@ -1,8 +1,16 @@
 const isServer = typeof window === "undefined";
-const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "https://firebrick-gnat-591688.hostingersite.com/api";
-const cleanUrl = RAW_API_URL.replace(/\/+$/, "");
-const SERVER_API_URL = cleanUrl.endsWith("/api") ? cleanUrl : `${cleanUrl}/api`;
+const DEFAULT_BACKEND_URL = "https://firebrick-gnat-591688.hostingersite.com/api";
 
+function resolveApiUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!envUrl || envUrl.includes("localhost") || envUrl.includes("render.com")) {
+    return DEFAULT_BACKEND_URL;
+  }
+  const clean = envUrl.replace(/\/+$/, "");
+  return clean.endsWith("/api") ? clean : `${clean}/api`;
+}
+
+const SERVER_API_URL = resolveApiUrl();
 const API_URL = isServer ? SERVER_API_URL : "/api";
 
 export async function getProducts(params = "", noCache = false) {
@@ -11,7 +19,7 @@ export async function getProducts(params = "", noCache = false) {
   try {
     const response = await fetch(`${API_URL}/products${params}`, {
       ...fetchOptions,
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
@@ -32,7 +40,7 @@ export async function getProduct(slug: string, noCache = false) {
   try {
     const response = await fetch(`${API_URL}/products/${slug}`, {
       ...fetchOptions,
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
@@ -339,7 +347,7 @@ export async function getSiteConfig(noCache = false) {
   try {
     const response = await fetch(`${API_URL}/config/site`, {
       ...fetchOptions,
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
     });
     
     if (!response.ok) {
@@ -464,7 +472,7 @@ export async function getAds(activeOnly = false, position?: string) {
   try {
     const response = await fetch(url, {
       next: { revalidate: 60 },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
     });
     
     if (!response.ok) {
