@@ -1,6 +1,9 @@
+const isServer = typeof window === "undefined";
 const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "https://firebrick-gnat-591688.hostingersite.com/api";
 const cleanUrl = RAW_API_URL.replace(/\/+$/, "");
-const API_URL = cleanUrl.endsWith("/api") ? cleanUrl : `${cleanUrl}/api`;
+const SERVER_API_URL = cleanUrl.endsWith("/api") ? cleanUrl : `${cleanUrl}/api`;
+
+const API_URL = isServer ? SERVER_API_URL : "/api";
 
 export async function getProducts(params = "", noCache = false) {
   const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };

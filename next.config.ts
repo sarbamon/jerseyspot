@@ -6,6 +6,18 @@ const nextConfig: NextConfig = {
     turbopackPluginRuntimeStrategy: "workerThreads",
     cpus: 2,
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://firebrick-gnat-591688.hostingersite.com/api/:path*",
+      },
+      {
+        source: "/uploads/:path*",
+        destination: "https://firebrick-gnat-591688.hostingersite.com/uploads/:path*",
+      },
+    ];
+  },
   images: {
     dangerouslyAllowLocalIP: true,
     remotePatterns: [
