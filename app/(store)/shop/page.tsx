@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   description: "Browse our complete collection of premium football jerseys. From latest player versions to classic retro kits.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ShopPage({
   searchParams,
 }: {
