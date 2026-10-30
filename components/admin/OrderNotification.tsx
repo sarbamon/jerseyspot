@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Bell, X } from "lucide-react";
+import { API_URL } from "@/lib/api";
 
 export default function OrderNotification() {
   const lastTimestampRef = useRef<number>(0);
   const [showToast, setShowToast] = useState(false);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  // API_URL imported from @/lib/api
 
   const playNotificationSound = () => {
     try {

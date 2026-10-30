@@ -121,23 +121,11 @@ export default function AdminSettingsPage() {
     try {
       const dataToUpdate: any = {};
       const token = localStorage.getItem("jerseyspot-admin-token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          email: accountData.email || undefined,
-          oldPassword: accountData.oldPassword || undefined,
-          password: accountData.password || undefined,
-        }),
+      const data = await updateAdminProfile({
+        email: accountData.email || undefined,
+        oldPassword: accountData.oldPassword || undefined,
+        password: accountData.password || undefined,
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to update profile");
-      }
 
       alert("Admin credentials updated successfully!");
       setAccountData({ email: "", oldPassword: "", password: "" });

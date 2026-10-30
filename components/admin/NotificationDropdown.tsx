@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, TouchEvent } from "react";
 import { Bell, ShoppingBag, X, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/utils";
+import { API_URL } from "@/lib/api";
 
 interface Order {
   _id: string;
@@ -134,7 +135,7 @@ export default function NotificationDropdown() {
   const [showToast, setShowToast] = useState(false);
   const lastTimestampRef = useRef<number>(0);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  // API_URL imported from @/lib/api
 
   const playNotificationSound = () => {
     try {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { API_URL } from "@/lib/api";
 import { Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -31,7 +32,7 @@ export default function BulkUploadButton() {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const apiUrl = API_URL;
       const token = localStorage.getItem("jerseyspot-admin-token");
 
       const res = await fetch(`${apiUrl}/products/bulk-upload`, {

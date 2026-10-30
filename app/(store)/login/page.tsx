@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useStore } from "@/components/StoreProvider";
 import { useState } from "react";
 import { MessageSquare, Mail, KeyRound, X } from "lucide-react";
+import { loginUser, googleLoginUser } from "@/lib/api";
+import { useGoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
   const { login } = useStore();
@@ -12,6 +14,8 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999999999";
@@ -19,9 +23,42 @@ export default function LoginPage() {
     `Hi Admin, I forgot my password for my account (${email || "my registered email"}). Please help me reset it.`
   )}`;
 
-  const handleLogin = () => {
-    login("mock-token", false);
-    router.back();
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await googleLoginUser(tokenResponse.access_token);
+        if (data.success) {
+          login(data.token, data.user);
+          router.push("/");
+        }
+      } catch (err: any) {
+        setError(err.message || "Google login failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => setError("Google login failed"),
+  });
+
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!email || !password) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await loginUser({ email, password });
+      if (data.success) {
+        login(data.token, data.user);
+        router.push("/");
+      }
+    } catch (err: any) {
+      setError(err.message || "Invalid email or password");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -34,7 +71,13 @@ export default function LoginPage() {
           Sign in to access your orders and wishlist.
         </p>
 
-        <form className="space-y-6">
+        {error && (
+          <div className="mb-6 rounded bg-red-50 p-3 text-center text-sm font-medium text-red-600 border border-red-200">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label
               htmlFor="email"
@@ -77,11 +120,11 @@ export default function LoginPage() {
           </div>
 
           <button
-            type="button"
-            onClick={handleLogin}
-            className="w-full bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-900"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-900 disabled:opacity-50"
           >
-            Sign In
+            {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 
@@ -93,8 +136,9 @@ export default function LoginPage() {
 
         <button
           type="button"
-          onClick={handleLogin}
-          className="flex w-full items-center justify-center gap-3 border border-gray-300 bg-white px-6 py-4 text-sm font-bold uppercase tracking-wider text-black transition-colors hover:bg-gray-50"
+          onClick={() => loginWithGoogle()}
+          disabled={loading}
+          className="flex w-full items-center justify-center gap-3 border border-gray-300 bg-white px-6 py-4 text-sm font-bold uppercase tracking-wider text-black transition-colors hover:bg-gray-50 disabled:opacity-50"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
@@ -142,32 +186,36 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="my-4 text-xs text-gray-600 leading-relaxed">
-              To reset your password, chat with us directly on WhatsApp. Our admin team will reset your password for you right away.
+            <div className="py-4 text-sm text-gray-600 space-y-3">
+              <p>
+                To reset your password, please contact our support team on WhatsApp with your registered email address.
+              </p>
+              <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500 border border-gray-200">
+                Registered Email: <span className="font-semibold text-gray-800">{email || "Not entered"}</span>
+              </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="flex flex-col gap-2 pt-2">
               <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex w-full items-center justify-center space-x-2 rounded-lg bg-green-600 px-4 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-green-700"
+                className="flex items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow transition-all hover:bg-[#20ba5a]"
               >
                 <MessageSquare className="h-4 w-4" />
-                <span>Chat on WhatsApp</span>
+                Contact on WhatsApp
               </a>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="w-full rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
             </div>
-
-            <button
-              onClick={() => setShowForgotModal(false)}
-              className="mt-4 w-full text-center text-xs text-gray-400 hover:text-gray-600"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
     </main>
   );
 }
-

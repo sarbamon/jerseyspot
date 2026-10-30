@@ -1,19 +1,36 @@
 const isServer = typeof window === "undefined";
-const DEFAULT_BACKEND_URL = "https://firebrick-gnat-591688.hostingersite.com/api";
+export const DEFAULT_BACKEND_URL = "https://firebrick-gnat-591688.hostingersite.com/api";
 
-function resolveApiUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!envUrl || envUrl.includes("localhost") || envUrl.includes("render.com")) {
+export function resolveApiUrl(): string {
+  let envUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || "").trim();
+
+  // If unset, or pointing to local / render / frontend domain, use canonical backend
+  if (
+    !envUrl ||
+    envUrl.includes("localhost") ||
+    envUrl.includes("127.0.0.1") ||
+    envUrl.includes("render.com") ||
+    envUrl.includes("jerseyspot.online")
+  ) {
     return DEFAULT_BACKEND_URL;
   }
-  const clean = envUrl.replace(/\/+$/, "");
-  return clean.endsWith("/api") ? clean : `${clean}/api`;
+
+  // Ensure protocol is present
+  if (!envUrl.startsWith("http://") && !envUrl.startsWith("https://")) {
+    envUrl = `https://${envUrl}`;
+  }
+
+  // Strip trailing slashes
+  envUrl = envUrl.replace(/\/+$/, "");
+
+  // Ensure /api suffix
+  return envUrl.endsWith("/api") ? envUrl : `${envUrl}/api`;
 }
 
-const SERVER_API_URL = resolveApiUrl();
-const API_URL = isServer ? SERVER_API_URL : "/api";
+export const SERVER_API_URL = resolveApiUrl();
+export const API_URL = isServer ? SERVER_API_URL : "/api";
 
-export async function getProducts(params = "", noCache = false) {
+export async function getProducts(params = "", noCache = true) {
   const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
 
   try {
@@ -34,7 +51,7 @@ export async function getProducts(params = "", noCache = false) {
   }
 }
 
-export async function getProduct(slug: string, noCache = false) {
+export async function getProduct(slug: string, noCache = true) {
   const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
 
   try {
@@ -341,7 +358,7 @@ export async function getOrders(noCache = false) {
   return response.json();
 }
 
-export async function getSiteConfig(noCache = false) {
+export async function getSiteConfig(noCache = true) {
   const fetchOptions: RequestInit = noCache ? { cache: "no-store" } : { next: { revalidate: 60 } };
   
   try {
