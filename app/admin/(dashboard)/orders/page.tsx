@@ -850,7 +850,7 @@ export default function AdminOrdersPage() {
                         {order.couponCode ? (
                           <div className="mt-1 flex items-center gap-1">
                             <span className="inline-flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 border border-green-200" title={`Coupon Code: ${order.couponCode}`}>
-                              🏷️ {order.couponCode}
+                              COUPON: {order.couponCode}
                               {order.discountAmount > 0 ? ` (-₹${order.discountAmount.toLocaleString("en-IN")})` : ""}
                             </span>
                           </div>
@@ -1358,7 +1358,7 @@ export default function AdminOrdersPage() {
                 <span className="font-bold text-black">Coupon:</span>{" "}
                 {viewProductsModalOrder.couponCode ? (
                   <span className="font-bold text-green-800 bg-green-100 px-2 py-0.5 rounded border border-green-300">
-                    🏷️ {viewProductsModalOrder.couponCode} (-₹{(viewProductsModalOrder.discountAmount || 0).toLocaleString("en-IN")})
+                    COUPON: {viewProductsModalOrder.couponCode} (-₹{(viewProductsModalOrder.discountAmount || 0).toLocaleString("en-IN")})
                   </span>
                 ) : (
                   <span className="text-gray-500 font-medium">No Coupon Used</span>

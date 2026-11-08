@@ -345,7 +345,7 @@ export default function BulkProductsPage() {
       <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm">
         <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <p className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-            ⚡ Quick Batch Presets (Apply to all rows & auto-fill new rows)
+            Quick Batch Presets (Apply to all rows & auto-fill new rows)
           </p>
           <button
             type="button"

@@ -168,7 +168,7 @@ export default function NewProductPage() {
           href="/admin/products/bulk"
           className="rounded border border-black bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-black transition-colors hover:bg-gray-100"
         >
-          ⚡ Switch to Bulk Form
+          Switch to Bulk Form
         </Link>
       </div>
 

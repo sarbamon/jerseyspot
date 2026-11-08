@@ -40,8 +40,8 @@ export default async function ProductPage({
     return (
       <main className="flex min-h-[70vh] flex-col items-center justify-center bg-white px-6 py-20 text-center text-black">
         <div className="mx-auto max-w-md space-y-6">
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-amber-50 shadow-inner border border-amber-200 text-5xl transition-transform hover:scale-110">
-            🥺
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 border border-gray-200 text-gray-400">
+            <span className="text-2xl font-bold font-serif">JS</span>
           </div>
           <h1 className="font-serif text-3xl font-bold tracking-tight text-black">
             Product Currently Unavailable

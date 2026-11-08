@@ -424,7 +424,7 @@ export default function AdminProductTable({
           </span>
           {isBulkEditMode && (
             <span className="rounded bg-black px-2.5 py-1 text-[11px] font-bold text-[#f4c84a] uppercase tracking-wider">
-              ⚡ BULK EDIT MODE ACTIVE — Click on Name, Category, or Stock to edit directly
+              BULK EDIT MODE ACTIVE — Click on Name, Category, or Stock to edit directly
             </span>
           )}
         </div>
@@ -432,7 +432,7 @@ export default function AdminProductTable({
 
       {/* Bulk Edit Batch Action Bar (Appears when Bulk Edit Mode is ON) */}
       {isBulkEditMode && (
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-50/70 border-b border-amber-200 px-6 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-100 border-b border-gray-200 px-6 py-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-800">
               Batch Quick Apply ({selectedIds.length} selected):
@@ -578,7 +578,7 @@ export default function AdminProductTable({
                     key={product._id}
                     className={`transition-colors ${
                       isRowEdited
-                        ? "bg-amber-50/60"
+                        ? "bg-gray-50 border-l-2 border-l-black"
                         : selectedIds.includes(product._id)
                         ? "bg-gray-50"
                         : "hover:bg-gray-50/80"
@@ -621,7 +621,7 @@ export default function AdminProductTable({
                                 className="w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold text-black focus:border-black focus:outline-none"
                               />
                               {isRowEdited && (
-                                <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 uppercase tracking-wider">
+                                <span className="inline-block rounded bg-black px-1.5 py-0.5 text-[9px] font-bold text-[#f4c84a] uppercase tracking-wider">
                                   Edited
                                 </span>
                               )}
