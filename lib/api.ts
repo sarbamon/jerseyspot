@@ -866,6 +866,26 @@ export async function bulkUpdateCategory(ids: string[], category: string) {
   return response.json();
 }
 
+export async function bulkUpdateProducts(updates: any[]) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+
+  const response = await fetch(`${API_URL}/products/bulk-update`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ updates }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to bulk update products");
+  }
+
+  return response.json();
+}
+
 export async function deleteCoupon(id: string) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
   const response = await fetch(`${API_URL}/coupons/${id}`, {
