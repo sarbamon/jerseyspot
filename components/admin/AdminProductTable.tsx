@@ -455,7 +455,9 @@ export default function AdminProductTable({
           </span>
           {isBulkEditMode && (
             <span className="rounded bg-black px-2.5 py-1 text-[11px] font-bold text-[#f4c84a] uppercase tracking-wider">
-              BULK EDIT MODE ACTIVE — Edit Name, Category, or Stock (e.g. m5 l5 xl5)
+              {selectedIds.length === 0
+                ? "BULK EDIT MODE ACTIVE — Check the boxes of products you want to edit"
+                : `BULK EDIT MODE ACTIVE — Editing ${selectedIds.length} selected ${selectedIds.length === 1 ? "product" : "products"}`}
             </span>
           )}
         </div>
@@ -598,6 +600,8 @@ export default function AdminProductTable({
               </tr>
             ) : (
               filteredProducts.map((product: any) => {
+                const isRowSelected = selectedIds.includes(product._id);
+                const isRowEditable = isBulkEditMode && isRowSelected;
                 const isRowEdited = !!edits[product._id];
                 const currentName = edits[product._id]?.name ?? product.name;
                 const currentCategory = edits[product._id]?.category ?? product.category ?? "player-version";
@@ -646,7 +650,7 @@ export default function AdminProductTable({
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          {isBulkEditMode ? (
+                          {isRowEditable ? (
                             <div className="space-y-1">
                               <input
                                 type="text"
@@ -677,7 +681,7 @@ export default function AdminProductTable({
 
                     {/* CATEGORY COLUMN */}
                     <td className="px-6 py-4">
-                      {isBulkEditMode ? (
+                      {isRowEditable ? (
                         <select
                           value={currentCategory}
                           onChange={(e) =>
@@ -721,7 +725,7 @@ export default function AdminProductTable({
 
                     {/* STOCK (SIZES) COLUMN */}
                     <td className="px-6 py-4">
-                      {isBulkEditMode ? (
+                      {isRowEditable ? (
                         <div className="space-y-1 max-w-[260px]">
                           <input
                             type="text"
