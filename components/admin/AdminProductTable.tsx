@@ -9,6 +9,27 @@ import DeleteProductButton from "./DeleteProductButton";
 import RestoreProductButton from "./RestoreProductButton";
 import { bulkDeleteProducts, bulkUpdateStock, bulkUpdateCategory, bulkUpdateProducts } from "@/lib/api";
 
+function formatSizesToString(sizes: any[]): string {
+  if (!sizes || !Array.isArray(sizes) || sizes.length === 0) return "";
+  return sizes.map((s) => `${s.size.toLowerCase()}${s.stock}`).join(" ");
+}
+
+function parseSizesInput(str: string): { size: string; stock: number }[] {
+  if (!str || typeof str !== "string") return [];
+  const parts = str.split(/[,|;\s]+/).map((s) => s.trim()).filter(Boolean);
+  const result: { size: string; stock: number }[] = [];
+  for (const part of parts) {
+    const concatMatch = part.match(/^([a-zA-Z]+)(\d+)$/);
+    const delimitedMatch = part.match(/^([a-zA-Z0-9]+?)\s*[:=\-]\s*(\d+)$/);
+    if (concatMatch) {
+      result.push({ size: concatMatch[1].toUpperCase(), stock: parseInt(concatMatch[2], 10) });
+    } else if (delimitedMatch) {
+      result.push({ size: delimitedMatch[1].toUpperCase(), stock: parseInt(delimitedMatch[2], 10) });
+    }
+  }
+  return result;
+}
+
 export default function AdminProductTable({
   products,
   isDeletedTab,
@@ -20,10 +41,10 @@ export default function AdminProductTable({
   const [localProducts, setLocalProducts] = useState<any[]>(products);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  // Bulk Edit Mode (Only active when user clicks "Bulk Edit")
+  // Bulk Edit Mode (Only active when user clicks "BULK EDIT")
   const [isBulkEditMode, setIsBulkEditMode] = useState<boolean>(false);
   const [edits, setEdits] = useState<{
-    [id: string]: { name?: string; category?: string; stock?: number };
+    [id: string]: { name?: string; category?: string; sizesStr?: string };
   }>({});
 
   const [isSaving, setIsSaving] = useState(false);
@@ -33,7 +54,7 @@ export default function AdminProductTable({
 
   // Batch Toolbar States
   const [batchCategory, setBatchCategory] = useState<string>("player-version");
-  const [batchStock, setBatchStock] = useState<string>("");
+  const [batchSizesStr, setBatchSizesStr] = useState<string>("");
 
   // Sync when prop products change
   useEffect(() => {
@@ -123,7 +144,7 @@ export default function AdminProductTable({
   };
 
   // Field Edit in Bulk Edit Mode
-  const handleFieldEdit = (id: string, field: "name" | "category" | "stock", value: any) => {
+  const handleFieldEdit = (id: string, field: "name" | "category" | "sizesStr", value: any) => {
     setEdits((prev) => ({
       ...prev,
       [id]: {
@@ -145,14 +166,13 @@ export default function AdminProductTable({
     });
   };
 
-  // Apply Batch Stock to all selected rows
+  // Apply Batch Stock (e.g. "m5 l5 xl5") to all selected rows
   const handleApplyBatchStock = () => {
-    if (selectedIds.length === 0 || !batchStock) return;
-    const num = Math.max(0, parseInt(batchStock, 10));
+    if (selectedIds.length === 0 || !batchSizesStr.trim()) return;
     setEdits((prev) => {
       const next = { ...prev };
       selectedIds.forEach((id) => {
-        next[id] = { ...next[id], stock: num };
+        next[id] = { ...next[id], sizesStr: batchSizesStr.trim() };
       });
       return next;
     });
@@ -172,10 +192,18 @@ export default function AdminProductTable({
       return;
     }
 
-    const updates = editKeys.map((id) => ({
-      _id: id,
-      ...edits[id],
-    }));
+    const updates = editKeys.map((id) => {
+      const updatePayload: any = { _id: id };
+      if (edits[id].name !== undefined) updatePayload.name = edits[id].name;
+      if (edits[id].category !== undefined) updatePayload.category = edits[id].category;
+      if (edits[id].sizesStr !== undefined) {
+        updatePayload.sizesStr = edits[id].sizesStr;
+        const parsed = parseSizesInput(edits[id].sizesStr || "");
+        updatePayload.sizes = parsed;
+        updatePayload.stock = parsed.reduce((sum, s) => sum + s.stock, 0);
+      }
+      return updatePayload;
+    });
 
     setIsSaving(true);
     try {
@@ -185,10 +213,13 @@ export default function AdminProductTable({
       setLocalProducts((prev) =>
         prev.map((p) => {
           if (edits[p._id]) {
-            const updated = { ...p, ...edits[p._id] };
-            if (edits[p._id].stock !== undefined) {
-              const newStk = edits[p._id].stock!;
-              updated.sizes = (p.sizes || []).map((s: any) => ({ ...s, stock: newStk }));
+            const updated = { ...p };
+            if (edits[p._id].name !== undefined) updated.name = edits[p._id].name;
+            if (edits[p._id].category !== undefined) updated.category = edits[p._id].category;
+            if (edits[p._id].sizesStr !== undefined) {
+              const parsed = parseSizesInput(edits[p._id].sizesStr || "");
+              updated.sizes = parsed;
+              updated.stock = parsed.reduce((sum, s) => sum + s.stock, 0);
             }
             return updated;
           }
@@ -424,7 +455,7 @@ export default function AdminProductTable({
           </span>
           {isBulkEditMode && (
             <span className="rounded bg-black px-2.5 py-1 text-[11px] font-bold text-[#f4c84a] uppercase tracking-wider">
-              BULK EDIT MODE ACTIVE — Click on Name, Category, or Stock to edit directly
+              BULK EDIT MODE ACTIVE — Edit Name, Category, or Stock (e.g. m5 l5 xl5)
             </span>
           )}
         </div>
@@ -476,20 +507,19 @@ export default function AdminProductTable({
               </button>
             </div>
 
-            {/* Batch Stock */}
+            {/* Batch Stock by Sizes (e.g. "m5 l5 xl5") */}
             <div className="flex items-center gap-1.5 rounded border border-gray-300 bg-white p-1">
               <input
-                type="number"
-                min="0"
-                placeholder="Stock"
-                value={batchStock}
-                onChange={(e) => setBatchStock(e.target.value)}
-                className="w-16 bg-transparent text-xs font-bold text-gray-800 focus:outline-none py-1 px-2"
+                type="text"
+                placeholder="e.g. m5 l5 xl5"
+                value={batchSizesStr}
+                onChange={(e) => setBatchSizesStr(e.target.value)}
+                className="w-32 bg-transparent text-xs font-mono font-bold text-gray-800 focus:outline-none py-1 px-2"
               />
               <button
                 type="button"
                 onClick={handleApplyBatchStock}
-                disabled={selectedIds.length === 0 || !batchStock}
+                disabled={selectedIds.length === 0 || !batchSizesStr.trim()}
                 className="rounded border border-gray-300 bg-gray-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gray-800 hover:bg-gray-200 disabled:opacity-40"
               >
                 Set Stock
@@ -552,7 +582,7 @@ export default function AdminProductTable({
               <th className="px-6 py-4 min-w-[280px]">Product Name</th>
               <th className="px-6 py-4 min-w-[180px]">Category</th>
               <th className="px-6 py-4 min-w-[100px]">Price</th>
-              <th className="px-6 py-4 min-w-[160px]">Stock</th>
+              <th className="px-6 py-4 min-w-[220px]">Stock (Sizes)</th>
               <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -571,7 +601,14 @@ export default function AdminProductTable({
                 const isRowEdited = !!edits[product._id];
                 const currentName = edits[product._id]?.name ?? product.name;
                 const currentCategory = edits[product._id]?.category ?? product.category ?? "player-version";
-                const currentStock = edits[product._id]?.stock ?? product.stock;
+                
+                // Size stock as string, e.g. "m5 l5 xl5"
+                const defaultSizesStr = formatSizesToString(product.sizes);
+                const currentSizesStr = edits[product._id]?.sizesStr !== undefined 
+                  ? edits[product._id].sizesStr 
+                  : defaultSizesStr;
+                const parsedSizes = parseSizesInput(currentSizesStr || "");
+                const parsedTotal = parsedSizes.reduce((sum, s) => sum + s.stock, 0);
 
                 return (
                   <tr
@@ -682,24 +719,23 @@ export default function AdminProductTable({
                       ₹{product.price.toLocaleString("en-IN")}
                     </td>
 
-                    {/* STOCK COLUMN */}
+                    {/* STOCK (SIZES) COLUMN */}
                     <td className="px-6 py-4">
                       {isBulkEditMode ? (
-                        <div className="flex items-center gap-1.5">
+                        <div className="space-y-1 max-w-[260px]">
                           <input
-                            type="number"
-                            min="0"
-                            value={currentStock}
+                            type="text"
+                            value={currentSizesStr}
                             onChange={(e) =>
-                              handleFieldEdit(
-                                product._id,
-                                "stock",
-                                parseInt(e.target.value, 10) || 0
-                              )
+                              handleFieldEdit(product._id, "sizesStr", e.target.value)
                             }
-                            className="w-20 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold text-black focus:border-black focus:outline-none"
+                            placeholder="e.g. m5 l5 xl5"
+                            className="w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-mono font-bold text-black focus:border-black focus:outline-none"
                           />
-                          <span className="text-[11px] font-medium text-gray-400">units</span>
+                          <div className="flex items-center justify-between text-[10px] text-gray-500 font-semibold px-0.5">
+                            <span>Total: <strong className="text-black">{parsedTotal}</strong> units</span>
+                            <span className="text-gray-400">e.g. m5 l5 xl5</span>
+                          </div>
                         </div>
                       ) : isDeletedTab ? (
                         <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-red-800">
