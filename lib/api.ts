@@ -1,9 +1,24 @@
 const isServer = typeof window === "undefined";
+const isDev = process.env.NODE_ENV === "development";
 export const DEFAULT_BACKEND_URL = "https://firebrick-gnat-591688.hostingersite.com/api";
+export const DEFAULT_DEV_URL = "http://localhost:5000/api";
 
 export function resolveApiUrl(): string {
   let envUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || "").trim();
 
+  // In development mode, allow localhost / 127.0.0.1 or fallback to local backend (http://localhost:5000/api)
+  if (isDev) {
+    if (!envUrl) {
+      return DEFAULT_DEV_URL;
+    }
+    if (!envUrl.startsWith("http://") && !envUrl.startsWith("https://")) {
+      envUrl = `http://${envUrl}`;
+    }
+    envUrl = envUrl.replace(/\/+$/, "");
+    return envUrl.endsWith("/api") ? envUrl : `${envUrl}/api`;
+  }
+
+  // In production mode:
   // If unset, or pointing to local / render / frontend domain, use canonical backend
   if (
     !envUrl ||
