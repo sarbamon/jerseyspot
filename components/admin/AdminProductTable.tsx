@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Edit, Trash } from "lucide-react";
+import { Edit, Trash, Tag, Check, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DeleteProductButton from "./DeleteProductButton";
 import RestoreProductButton from "./RestoreProductButton";
-import { bulkDeleteProducts, bulkUpdateStock } from "@/lib/api";
+import { bulkDeleteProducts, bulkUpdateStock, bulkUpdateCategory } from "@/lib/api";
 
 export default function AdminProductTable({
   products,
@@ -17,9 +17,21 @@ export default function AdminProductTable({
   isDeletedTab: boolean;
 }) {
   const router = useRouter();
+  const [localProducts, setLocalProducts] = useState<any[]>(products);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingStock, setIsUpdatingStock] = useState(false);
+  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  // Bulk Category States
+  const [bulkCategory, setBulkCategory] = useState<string>("player-version");
+  const [customCategory, setCustomCategory] = useState<string>("");
+
+  // Sync when prop products change
+  useEffect(() => {
+    setLocalProducts(products);
+  }, [products]);
 
   // Filter States
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -30,11 +42,11 @@ export default function AdminProductTable({
 
   // Extract unique categories from products list
   const uniqueCategories = Array.from(
-    new Set(products.map((p) => p.category).filter(Boolean))
+    new Set(localProducts.map((p) => p.category).filter(Boolean))
   );
 
   // Filter & Sort Logic
-  const filteredProducts = products
+  const filteredProducts = localProducts
     .filter((product) => {
       // Category Filter
       if (selectedCategory !== "all") {
@@ -110,11 +122,13 @@ export default function AdminProductTable({
     setIsDeleting(true);
     try {
       await bulkDeleteProducts(selectedIds);
-      setSelectedIds([]); // Clear selection after success
+      setLocalProducts((prev) => prev.filter((p) => !selectedIds.includes(p._id)));
+      setSelectedIds([]);
+      setStatusMessage({ text: "Products successfully deleted.", type: "success" });
       router.refresh();
     } catch (error) {
       console.error("Failed to bulk delete:", error);
-      alert("Failed to delete products.");
+      setStatusMessage({ text: "Failed to delete products.", type: "error" });
     } finally {
       setIsDeleting(false);
     }
@@ -128,18 +142,109 @@ export default function AdminProductTable({
     setIsUpdatingStock(true);
     try {
       await bulkUpdateStock(selectedIds, newStock);
-      setSelectedIds([]); // Clear selection after success
+      setLocalProducts((prev) =>
+        prev.map((p) =>
+          selectedIds.includes(p._id)
+            ? {
+                ...p,
+                stock: newStock,
+                sizes: (p.sizes || []).map((s: any) => ({ ...s, stock: newStock })),
+              }
+            : p
+        )
+      );
+      setSelectedIds([]);
+      setStatusMessage({ text: `Stock updated for ${selectedIds.length} products.`, type: "success" });
       router.refresh();
     } catch (error) {
       console.error("Failed to update stock:", error);
-      alert("Failed to update stock for selected products.");
+      setStatusMessage({ text: "Failed to update stock for selected products.", type: "error" });
     } finally {
       setIsUpdatingStock(false);
     }
   };
 
+  const handleBulkCategory = async () => {
+    if (selectedIds.length === 0) return;
+    const finalCategory = bulkCategory === "custom" ? customCategory.trim() : bulkCategory;
+    if (!finalCategory) {
+      alert("Please choose or enter a valid category name.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to change the category of ${selectedIds.length} products to "${finalCategory}"?`
+      )
+    ) {
+      return;
+    }
+
+    setIsUpdatingCategory(true);
+    try {
+      await bulkUpdateCategory(selectedIds, finalCategory);
+      setLocalProducts((prev) =>
+        prev.map((p) =>
+          selectedIds.includes(p._id) ? { ...p, category: finalCategory } : p
+        )
+      );
+      setSelectedIds([]);
+      setStatusMessage({
+        text: `Category updated to "${finalCategory}" for ${selectedIds.length} products.`,
+        type: "success",
+      });
+      router.refresh();
+    } catch (error: any) {
+      console.error("Failed to bulk update category:", error);
+      setStatusMessage({
+        text: error.message || "Failed to update category for selected products.",
+        type: "error",
+      });
+    } finally {
+      setIsUpdatingCategory(false);
+    }
+  };
+
+  const handleSingleCategoryChange = async (productId: string, newCat: string) => {
+    if (!newCat) return;
+    try {
+      await bulkUpdateCategory([productId], newCat);
+      setLocalProducts((prev) =>
+        prev.map((p) => (p._id === productId ? { ...p, category: newCat } : p))
+      );
+      setStatusMessage({
+        text: `Product category updated to "${newCat}".`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setStatusMessage({
+        text: err.message || "Failed to update product category.",
+        type: "error",
+      });
+    }
+  };
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      {/* Status Message */}
+      {statusMessage && (
+        <div
+          className={`flex items-center justify-between border-b px-6 py-3 text-xs font-bold ${
+            statusMessage.type === "success"
+              ? "border-green-200 bg-green-50 text-green-800"
+              : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          <span>{statusMessage.text}</span>
+          <button
+            onClick={() => setStatusMessage(null)}
+            className="text-gray-400 hover:text-black"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Admin Filters Toolbar */}
       <div className="border-b border-gray-200 bg-gray-50/50 p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -166,10 +271,11 @@ export default function AdminProductTable({
               <option value="fan-version">FAN VERSION</option>
               <option value="sets">SETS / KIT</option>
               <option value="retro">RETRO</option>
+              <option value="clearance">CLEARANCE</option>
               {uniqueCategories
                 .filter(
                   (c) =>
-                    !["player-version", "fan-version", "sets", "retro"].includes(
+                    !["player-version", "fan-version", "sets", "retro", "clearance"].includes(
                       c.toLowerCase()
                     )
                 )
@@ -233,7 +339,7 @@ export default function AdminProductTable({
         <div className="mt-2 flex items-center justify-between text-xs text-gray-500 font-medium">
           <span>
             Showing <strong className="text-black">{filteredProducts.length}</strong> of{" "}
-            <strong className="text-black">{products.length}</strong> products
+            <strong className="text-black">{localProducts.length}</strong> products
           </span>
           {selectedCategory !== "all" && (
             <span className="rounded bg-black px-2 py-0.5 text-[10px] font-bold text-[#f4c84a] uppercase">
@@ -242,34 +348,85 @@ export default function AdminProductTable({
           )}
         </div>
       </div>
+
       {/* Bulk Actions Bar */}
       {!isDeletedTab && selectedIds.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 px-6 py-3 border-b border-gray-200">
-          <span className="text-sm font-bold text-gray-700">
-            {selectedIds.length} selected
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-100 px-6 py-3 border-b border-gray-200">
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-800">
+            {selectedIds.length} SELECTED
           </span>
-          <div className="flex flex-wrap items-center gap-2">
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* BULK CATEGORY EDIT */}
+            <div className="flex items-center gap-1.5 rounded border border-gray-300 bg-white p-1 shadow-sm">
+              <Tag size={14} className="ml-1 text-gray-500 shrink-0" />
+              <select
+                value={bulkCategory}
+                onChange={(e) => setBulkCategory(e.target.value)}
+                className="bg-transparent text-xs font-bold uppercase tracking-wider text-gray-800 focus:outline-none py-1 px-1 cursor-pointer"
+              >
+                <option value="player-version">Player Version</option>
+                <option value="fan-version">Fan Version</option>
+                <option value="sets">Sets / Kit</option>
+                <option value="retro">Retro</option>
+                <option value="clearance">Clearance</option>
+                {uniqueCategories
+                  .filter(
+                    (c) =>
+                      !["player-version", "fan-version", "sets", "retro", "clearance"].includes(
+                        c.toLowerCase()
+                      )
+                  )
+                  .map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat.toUpperCase().replace("-", " ")}
+                    </option>
+                  ))}
+                <option value="custom">+ Custom Category...</option>
+              </select>
+
+              {bulkCategory === "custom" && (
+                <input
+                  type="text"
+                  placeholder="category-name"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  className="w-28 rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs font-semibold focus:border-black focus:outline-none"
+                />
+              )}
+
+              <button
+                type="button"
+                onClick={handleBulkCategory}
+                disabled={isUpdatingCategory || isDeleting || isUpdatingStock}
+                className="rounded bg-black px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-800 disabled:opacity-50"
+              >
+                {isUpdatingCategory ? "Saving..." : "Change Category"}
+              </button>
+            </div>
+
+            {/* STOCK & DELETE BUTTONS */}
             <button
               onClick={() => handleBulkStock(0)}
-              disabled={isUpdatingStock || isDeleting}
-              className="flex items-center gap-2 rounded border border-amber-600 bg-amber-500 px-4 py-2 text-xs font-bold tracking-wider text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+              disabled={isUpdatingStock || isDeleting || isUpdatingCategory}
+              className="flex items-center gap-1.5 rounded border border-amber-600 bg-amber-500 px-3 py-1.5 text-xs font-bold tracking-wider text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
             >
-              {isUpdatingStock ? "UPDATING..." : "MARK OUT OF STOCK"}
+              {isUpdatingStock ? "Updating..." : "Out of Stock"}
             </button>
             <button
               onClick={() => handleBulkStock(10)}
-              disabled={isUpdatingStock || isDeleting}
-              className="flex items-center gap-2 rounded border border-green-600 bg-green-600 px-4 py-2 text-xs font-bold tracking-wider text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+              disabled={isUpdatingStock || isDeleting || isUpdatingCategory}
+              className="flex items-center gap-1.5 rounded border border-green-600 bg-green-600 px-3 py-1.5 text-xs font-bold tracking-wider text-white transition-colors hover:bg-green-700 disabled:opacity-50"
             >
-              {isUpdatingStock ? "UPDATING..." : "MARK IN STOCK"}
+              {isUpdatingStock ? "Updating..." : "In Stock"}
             </button>
             <button
               onClick={handleBulkDelete}
-              disabled={isDeleting || isUpdatingStock}
-              className="flex items-center gap-2 rounded bg-red-600 px-4 py-2 text-xs font-bold tracking-wider text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              disabled={isDeleting || isUpdatingStock || isUpdatingCategory}
+              className="flex items-center gap-1.5 rounded bg-red-600 px-3 py-1.5 text-xs font-bold tracking-wider text-white transition-colors hover:bg-red-700 disabled:opacity-50"
             >
-              <Trash size={15} />
-              {isDeleting ? "DELETING..." : "DELETE SELECTED"}
+              <Trash size={14} />
+              {isDeleting ? "Deleting..." : "Delete"}
             </button>
           </div>
         </div>
@@ -283,8 +440,10 @@ export default function AdminProductTable({
                 <th className="px-6 py-4 w-12">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
-                    checked={selectedIds.length > 0 && selectedIds.length === filteredProducts.length}
+                    className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                    checked={
+                      selectedIds.length > 0 && selectedIds.length === filteredProducts.length
+                    }
                     onChange={toggleSelectAll}
                   />
                 </th>
@@ -299,7 +458,10 @@ export default function AdminProductTable({
           <tbody className="divide-y divide-gray-200">
             {filteredProducts.length === 0 ? (
               <tr>
-                <td colSpan={isDeletedTab ? 5 : 6} className="px-6 py-8 text-center text-gray-500">
+                <td
+                  colSpan={isDeletedTab ? 5 : 6}
+                  className="px-6 py-8 text-center text-gray-500"
+                >
                   No products found matching the selected filters.
                 </td>
               </tr>
@@ -308,14 +470,14 @@ export default function AdminProductTable({
                 <tr
                   key={product._id}
                   className={`transition-colors hover:bg-gray-50 ${
-                    selectedIds.includes(product._id) ? "bg-gray-50" : ""
+                    selectedIds.includes(product._id) ? "bg-amber-50/40" : ""
                   }`}
                 >
                   {!isDeletedTab && (
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                        className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                         checked={selectedIds.includes(product._id)}
                         onChange={() => toggleSelect(product._id)}
                       />
@@ -338,8 +500,44 @@ export default function AdminProductTable({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 uppercase tracking-wider text-xs font-bold">
-                    {product.category ? product.category.replace("-", " ") : "N/A"}
+                  <td className="px-6 py-4">
+                    {/* Inline Quick Category Selector */}
+                    {isDeletedTab ? (
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                        {product.category || "N/A"}
+                      </span>
+                    ) : (
+                      <select
+                        value={product.category || ""}
+                        onChange={(e) =>
+                          handleSingleCategoryChange(product._id, e.target.value)
+                        }
+                        title="Click to quick-change category"
+                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-800 transition hover:border-black focus:border-black focus:bg-white focus:outline-none cursor-pointer"
+                      >
+                        <option value="player-version">Player Version</option>
+                        <option value="fan-version">Fan Version</option>
+                        <option value="sets">Sets / Kit</option>
+                        <option value="retro">Retro</option>
+                        <option value="clearance">Clearance</option>
+                        {uniqueCategories
+                          .filter(
+                            (c) =>
+                              ![
+                                "player-version",
+                                "fan-version",
+                                "sets",
+                                "retro",
+                                "clearance",
+                              ].includes(c.toLowerCase())
+                          )
+                          .map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat.toUpperCase().replace("-", " ")}
+                            </option>
+                          ))}
+                      </select>
+                    )}
                   </td>
                   <td className="px-6 py-4 font-bold text-black">
                     ₹{product.price.toLocaleString("en-IN")}
@@ -357,11 +555,11 @@ export default function AdminProductTable({
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
                         {product.sizes && product.sizes.length > 0 ? (
                           product.sizes.map((s: any) => (
-                            <span 
-                              key={s.size} 
+                            <span
+                              key={s.size}
                               className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                                s.stock > 0 
-                                  ? "bg-green-100 text-green-800 border border-green-200" 
+                                s.stock > 0
+                                  ? "bg-green-100 text-green-800 border border-green-200"
                                   : "bg-red-50 text-red-400 border border-red-100"
                               }`}
                             >

@@ -73,7 +73,7 @@ export default async function CategorySection() {
               className="object-cover object-center opacity-40 transition duration-500 group-hover:scale-105 group-hover:opacity-60"
             />
             <div className="relative z-10 text-center">
-              <h3 className="text-lg sm:text-xl font-bold tracking-wider drop-shadow-xl text-white">
+              <h3 className="text-lg sm:text-xl font-bold tracking-wider text-white">
                 {category.name}
               </h3>
             </div>
