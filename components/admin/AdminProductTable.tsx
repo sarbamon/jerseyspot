@@ -47,6 +47,7 @@ export default function AdminProductTable({
     [id: string]: {
       name?: string;
       category?: string;
+      price?: string | number;
       sizesStr?: string;
       imageFile?: File;
       imagePreview?: string;
@@ -61,6 +62,7 @@ export default function AdminProductTable({
 
   // Batch Toolbar States
   const [batchCategory, setBatchCategory] = useState<string>("player-version");
+  const [batchPrice, setBatchPrice] = useState<string>("");
   const [batchSizesStr, setBatchSizesStr] = useState<string>("");
 
   // Sync when prop products change
@@ -151,7 +153,11 @@ export default function AdminProductTable({
   };
 
   // Field Edit in Bulk Edit Mode
-  const handleFieldEdit = (id: string, field: "name" | "category" | "sizesStr", value: any) => {
+  const handleFieldEdit = (
+    id: string,
+    field: "name" | "category" | "price" | "sizesStr",
+    value: any
+  ) => {
     setEdits((prev) => ({
       ...prev,
       [id]: {
@@ -182,6 +188,19 @@ export default function AdminProductTable({
       const next = { ...prev };
       selectedIds.forEach((id) => {
         next[id] = { ...next[id], category: batchCategory };
+      });
+      return next;
+    });
+  };
+
+  // Apply Batch Price to all selected rows
+  const handleApplyBatchPrice = () => {
+    if (selectedIds.length === 0 || !batchPrice.trim() || isNaN(Number(batchPrice))) return;
+    const num = parseFloat(batchPrice);
+    setEdits((prev) => {
+      const next = { ...prev };
+      selectedIds.forEach((id) => {
+        next[id] = { ...next[id], price: num };
       });
       return next;
     });
@@ -243,6 +262,9 @@ export default function AdminProductTable({
         const updatePayload: any = { _id: id };
         if (edits[id].name !== undefined) updatePayload.name = edits[id].name;
         if (edits[id].category !== undefined) updatePayload.category = edits[id].category;
+        if (edits[id].price !== undefined && !isNaN(Number(edits[id].price))) {
+          updatePayload.price = parseFloat(String(edits[id].price));
+        }
         if (edits[id].sizesStr !== undefined) {
           updatePayload.sizesStr = edits[id].sizesStr;
           const parsed = parseSizesInput(edits[id].sizesStr || "");
@@ -264,6 +286,9 @@ export default function AdminProductTable({
             const updated = { ...p };
             if (edits[p._id].name !== undefined) updated.name = edits[p._id].name;
             if (edits[p._id].category !== undefined) updated.category = edits[p._id].category;
+            if (edits[p._id].price !== undefined && !isNaN(Number(edits[p._id].price))) {
+              updated.price = parseFloat(String(edits[p._id].price));
+            }
             if (edits[p._id].sizesStr !== undefined) {
               const parsed = parseSizesInput(edits[p._id].sizesStr || "");
               updated.sizes = parsed;
@@ -564,6 +589,26 @@ export default function AdminProductTable({
               </button>
             </div>
 
+            {/* Batch Price */}
+            <div className="flex items-center gap-1 rounded border border-gray-300 bg-white p-1">
+              <span className="text-xs font-bold text-gray-400 pl-1.5">₹</span>
+              <input
+                type="number"
+                placeholder="e.g. 749"
+                value={batchPrice}
+                onChange={(e) => setBatchPrice(e.target.value)}
+                className="w-20 bg-transparent text-xs font-bold text-gray-800 focus:outline-none py-1 px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                onClick={handleApplyBatchPrice}
+                disabled={selectedIds.length === 0 || !batchPrice.trim()}
+                className="rounded border border-gray-300 bg-gray-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gray-800 hover:bg-gray-200 disabled:opacity-40"
+              >
+                Set Price
+              </button>
+            </div>
+
             {/* Batch Stock by Sizes (e.g. "m5 l5 xl5") */}
             <div className="flex items-center gap-1.5 rounded border border-gray-300 bg-white p-1">
               <input
@@ -662,6 +707,7 @@ export default function AdminProductTable({
                 const isRowEdited = !!edits[product._id];
                 const currentName = edits[product._id]?.name ?? product.name;
                 const currentCategory = edits[product._id]?.category ?? product.category ?? "player-version";
+                const currentPrice = edits[product._id]?.price !== undefined ? edits[product._id].price : product.price;
                 const currentImageSrc = edits[product._id]?.imagePreview || product.image || "/placeholder.png";
                 
                 // Size stock as string, e.g. "m5 l5 xl5"
@@ -814,8 +860,25 @@ export default function AdminProductTable({
                     </td>
 
                     {/* PRICE COLUMN */}
-                    <td className="px-6 py-4 font-bold text-black">
-                      ₹{product.price.toLocaleString("en-IN")}
+                    <td className="px-6 py-4">
+                      {isRowEditable ? (
+                        <div className="flex items-center gap-1 max-w-[120px]">
+                          <span className="text-xs font-bold text-gray-500">₹</span>
+                          <input
+                            type="number"
+                            value={currentPrice}
+                            onChange={(e) =>
+                              handleFieldEdit(product._id, "price", e.target.value)
+                            }
+                            placeholder="Price"
+                            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-xs font-bold text-black focus:border-black focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+                      ) : (
+                        <span className="font-bold text-black">
+                          ₹{product.price.toLocaleString("en-IN")}
+                        </span>
+                      )}
                     </td>
 
                     {/* STOCK (SIZES) COLUMN */}
