@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Edit, Trash, Tag, Check, RefreshCw, Pencil, X, Save } from "lucide-react";
+import { Edit, Trash, Tag, Check, RefreshCw, Pencil, X, Save, Camera, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DeleteProductButton from "./DeleteProductButton";
 import RestoreProductButton from "./RestoreProductButton";
-import { bulkDeleteProducts, bulkUpdateStock, bulkUpdateCategory, bulkUpdateProducts } from "@/lib/api";
+import { bulkDeleteProducts, bulkUpdateStock, bulkUpdateCategory, bulkUpdateProducts, uploadImages } from "@/lib/api";
 
 function formatSizesToString(sizes: any[]): string {
   if (!sizes || !Array.isArray(sizes) || sizes.length === 0) return "";
@@ -44,10 +44,17 @@ export default function AdminProductTable({
   // Bulk Edit Mode (Only active when user clicks "BULK EDIT")
   const [isBulkEditMode, setIsBulkEditMode] = useState<boolean>(false);
   const [edits, setEdits] = useState<{
-    [id: string]: { name?: string; category?: string; sizesStr?: string };
+    [id: string]: {
+      name?: string;
+      category?: string;
+      sizesStr?: string;
+      imageFile?: File;
+      imagePreview?: string;
+    };
   }>({});
 
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingStock, setIsUpdatingStock] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -154,6 +161,20 @@ export default function AdminProductTable({
     }));
   };
 
+  // Photo selection in Bulk Edit Mode
+  const handlePhotoSelect = (id: string, file: File | null) => {
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setEdits((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        imageFile: file,
+        imagePreview: previewUrl,
+      },
+    }));
+  };
+
   // Apply Batch Category to all selected rows
   const handleApplyBatchCategory = () => {
     if (selectedIds.length === 0) return;
@@ -192,21 +213,48 @@ export default function AdminProductTable({
       return;
     }
 
-    const updates = editKeys.map((id) => {
-      const updatePayload: any = { _id: id };
-      if (edits[id].name !== undefined) updatePayload.name = edits[id].name;
-      if (edits[id].category !== undefined) updatePayload.category = edits[id].category;
-      if (edits[id].sizesStr !== undefined) {
-        updatePayload.sizesStr = edits[id].sizesStr;
-        const parsed = parseSizesInput(edits[id].sizesStr || "");
-        updatePayload.sizes = parsed;
-        updatePayload.stock = parsed.reduce((sum, s) => sum + s.stock, 0);
-      }
-      return updatePayload;
-    });
-
     setIsSaving(true);
     try {
+      // 1. Upload any selected photos first
+      const uploadedImageMap: { [id: string]: string } = {};
+      const rowsWithPhotos = editKeys.filter((id) => edits[id]?.imageFile);
+
+      if (rowsWithPhotos.length > 0) {
+        setUploadingPhotos(true);
+        for (const id of rowsWithPhotos) {
+          const file = edits[id].imageFile;
+          if (file) {
+            try {
+              const res = await uploadImages([file]);
+              if (res && res.urls && res.urls.length > 0) {
+                uploadedImageMap[id] = res.urls[0];
+              }
+            } catch (uploadErr: any) {
+              console.error(`Failed to upload photo for product ${id}:`, uploadErr);
+              throw new Error(`Failed to upload photo: ${uploadErr.message || "Upload error"}`);
+            }
+          }
+        }
+        setUploadingPhotos(false);
+      }
+
+      // 2. Build updates payload
+      const updates = editKeys.map((id) => {
+        const updatePayload: any = { _id: id };
+        if (edits[id].name !== undefined) updatePayload.name = edits[id].name;
+        if (edits[id].category !== undefined) updatePayload.category = edits[id].category;
+        if (edits[id].sizesStr !== undefined) {
+          updatePayload.sizesStr = edits[id].sizesStr;
+          const parsed = parseSizesInput(edits[id].sizesStr || "");
+          updatePayload.sizes = parsed;
+          updatePayload.stock = parsed.reduce((sum, s) => sum + s.stock, 0);
+        }
+        if (uploadedImageMap[id]) {
+          updatePayload.image = uploadedImageMap[id];
+        }
+        return updatePayload;
+      });
+
       await bulkUpdateProducts(updates);
 
       // Update local products state
@@ -220,6 +268,9 @@ export default function AdminProductTable({
               const parsed = parseSizesInput(edits[p._id].sizesStr || "");
               updated.sizes = parsed;
               updated.stock = parsed.reduce((sum, s) => sum + s.stock, 0);
+            }
+            if (uploadedImageMap[p._id]) {
+              updated.image = uploadedImageMap[p._id];
             }
             return updated;
           }
@@ -430,7 +481,11 @@ export default function AdminProductTable({
                     className="flex items-center gap-1.5 rounded border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-800 disabled:opacity-50"
                   >
                     <Save size={14} />
-                    {isSaving ? "SAVING..." : `SAVE CHANGES ${editedCount > 0 ? `(${editedCount})` : ""}`}
+                    {isSaving
+                      ? uploadingPhotos
+                        ? "UPLOADING PHOTOS..."
+                        : "SAVING..."
+                      : `SAVE CHANGES ${editedCount > 0 ? `(${editedCount})` : ""}`}
                   </button>
                   <button
                     type="button"
@@ -581,7 +636,9 @@ export default function AdminProductTable({
                   />
                 </th>
               )}
-              <th className="px-6 py-4 min-w-[280px]">Product Name</th>
+              <th className="px-6 py-4 min-w-[280px]">
+                {isBulkEditMode ? "Product (Click Photo to Change)" : "Product Name"}
+              </th>
               <th className="px-6 py-4 min-w-[180px]">Category</th>
               <th className="px-6 py-4 min-w-[100px]">Price</th>
               <th className="px-6 py-4 min-w-[220px]">Stock (Sizes)</th>
@@ -605,6 +662,7 @@ export default function AdminProductTable({
                 const isRowEdited = !!edits[product._id];
                 const currentName = edits[product._id]?.name ?? product.name;
                 const currentCategory = edits[product._id]?.category ?? product.category ?? "player-version";
+                const currentImageSrc = edits[product._id]?.imagePreview || product.image || "/placeholder.png";
                 
                 // Size stock as string, e.g. "m5 l5 xl5"
                 const defaultSizesStr = formatSizesToString(product.sizes);
@@ -636,18 +694,55 @@ export default function AdminProductTable({
                       </td>
                     )}
 
-                    {/* PRODUCT NAME COLUMN */}
+                    {/* PRODUCT NAME & PHOTO COLUMN */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-gray-100 border border-gray-200">
-                          <Image
-                            src={product.image || "/placeholder.png"}
-                            alt={product.name}
-                            fill
-                            sizes="48px"
-                            className="object-contain"
-                          />
-                        </div>
+                        {isRowEditable ? (
+                          <label
+                            className="relative h-14 w-14 shrink-0 overflow-hidden rounded bg-gray-100 border border-gray-300 cursor-pointer group block"
+                            title="Click to upload / change photo"
+                          >
+                            <img
+                              src={currentImageSrc}
+                              alt={product.name}
+                              className="h-full w-full object-contain p-0.5"
+                            />
+                            {/* Hover overlay with camera icon */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/65 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                              <Camera size={15} />
+                              <span className="text-[8px] font-bold uppercase tracking-wider mt-0.5">Photo</span>
+                            </div>
+                            {/* Status indicator */}
+                            {edits[product._id]?.imageFile ? (
+                              <div className="absolute bottom-0 inset-x-0 bg-black text-[#f4c84a] text-[8px] font-bold text-center uppercase tracking-tighter py-0.5">
+                                New Photo
+                              </div>
+                            ) : (
+                              <div className="absolute top-0.5 right-0.5 rounded bg-black/60 p-0.5 text-white">
+                                <Camera size={10} />
+                              </div>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handlePhotoSelect(product._id, file);
+                              }}
+                            />
+                          </label>
+                        ) : (
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-gray-100 border border-gray-200">
+                            <Image
+                              src={product.image || "/placeholder.png"}
+                              alt={product.name}
+                              fill
+                              sizes="48px"
+                              className="object-contain"
+                            />
+                          </div>
+                        )}
 
                         <div className="flex-1 min-w-0">
                           {isRowEditable ? (
