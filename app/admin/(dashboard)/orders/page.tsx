@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getOrders, updateDeliveryStatus, deleteOrder, getSiteConfig, getOrderTracking, bookShipment, cancelOrder, fetchICarryPickupAddresses, updateOrderTracking, deleteOrderTracking, syncICarryStatuses, syncSingleICarryStatus } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { Trash2, Search, CheckSquare, Eye, X, ExternalLink, RefreshCw } from "lucide-react";
+import { Trash2, Search, CheckSquare, Eye, X, ExternalLink, RefreshCw, MapPin } from "lucide-react";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -734,13 +734,6 @@ export default function AdminOrdersPage() {
               Apply
             </button>
           </div>
-
-          <button
-            onClick={handleBulkDelete}
-            className="rounded border border-red-600 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-red-600 hover:bg-red-50 sm:ml-auto"
-          >
-            Delete Selected
-          </button>
         </div>
       )}
 
@@ -803,8 +796,26 @@ export default function AdminOrdersPage() {
                         <div className="font-semibold text-black">
                           {order.shippingAddress?.firstName} {order.shippingAddress?.lastName}
                         </div>
-                        <div className="text-xs text-gray-500">{order.shippingAddress?.email}</div>
                         <div className="text-xs text-gray-500">{order.shippingAddress?.phoneNumber}</div>
+                        <div className="text-xs text-gray-500">{order.shippingAddress?.email}</div>
+
+                        {order.shippingAddress && (
+                          <div className="mt-2 rounded bg-gray-50 p-2 text-xs text-gray-700 border border-gray-200 min-w-[200px] max-w-[260px]">
+                            <div className="flex items-center gap-1 font-bold text-gray-900 mb-0.5">
+                              <MapPin size={12} className="text-gray-500 shrink-0" />
+                              <span>Delivery Address:</span>
+                            </div>
+                            <div className="leading-snug text-gray-600 text-[11px]">
+                              {order.shippingAddress.houseOrBuilding ? `${order.shippingAddress.houseOrBuilding}, ` : ""}
+                              {order.shippingAddress.roadAreaColony ? `${order.shippingAddress.roadAreaColony}, ` : ""}
+                              {order.shippingAddress.streetAddress && !order.shippingAddress.houseOrBuilding ? `${order.shippingAddress.streetAddress}, ` : ""}
+                              {order.shippingAddress.landmark ? `(Near: ${order.shippingAddress.landmark}), ` : ""}
+                              <div className="font-semibold text-black mt-0.5">
+                                {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.postalCode}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
@@ -995,13 +1006,6 @@ export default function AdminOrdersPage() {
                             Cancel
                           </button>
                         )}
-                        <button
-                          onClick={() => handleDelete(order._id)}
-                          className="text-gray-400 hover:text-red-600 transition-colors ml-2"
-                          title="Delete Order"
-                        >
-                          <Trash2 size={18} />
-                        </button>
                       </td>
                     </tr>
                   ))
@@ -1347,23 +1351,37 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Modal Customer Summary Bar */}
-            <div className="mb-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-700 border border-gray-200 flex flex-col sm:flex-row justify-between gap-2">
-              <div>
-                <span className="font-bold text-black">Customer:</span> {viewProductsModalOrder.shippingAddress?.firstName} {viewProductsModalOrder.shippingAddress?.lastName} ({viewProductsModalOrder.shippingAddress?.phoneNumber})
+            <div className="mb-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-700 border border-gray-200 flex flex-col gap-2">
+              <div className="flex flex-col sm:flex-row justify-between gap-2">
+                <div>
+                  <span className="font-bold text-black">Customer:</span> {viewProductsModalOrder.shippingAddress?.firstName} {viewProductsModalOrder.shippingAddress?.lastName} ({viewProductsModalOrder.shippingAddress?.phoneNumber})
+                </div>
+                <div>
+                  <span className="font-bold text-black">Payment:</span> {viewProductsModalOrder.isPaid ? <span className="text-green-700 font-bold">Paid</span> : <span className="text-yellow-700 font-bold">Pending</span>} ({viewProductsModalOrder.paymentMethod})
+                </div>
+                <div>
+                  <span className="font-bold text-black">Coupon:</span>{" "}
+                  {viewProductsModalOrder.couponCode ? (
+                    <span className="font-bold text-green-800 bg-green-100 px-2 py-0.5 rounded border border-green-300">
+                      COUPON: {viewProductsModalOrder.couponCode} (-₹{(viewProductsModalOrder.discountAmount || 0).toLocaleString("en-IN")})
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 font-medium">No Coupon Used</span>
+                  )}
+                </div>
               </div>
-              <div>
-                <span className="font-bold text-black">Payment:</span> {viewProductsModalOrder.isPaid ? <span className="text-green-700 font-bold">Paid</span> : <span className="text-yellow-700 font-bold">Pending</span>} ({viewProductsModalOrder.paymentMethod})
-              </div>
-              <div>
-                <span className="font-bold text-black">Coupon:</span>{" "}
-                {viewProductsModalOrder.couponCode ? (
-                  <span className="font-bold text-green-800 bg-green-100 px-2 py-0.5 rounded border border-green-300">
-                    COUPON: {viewProductsModalOrder.couponCode} (-₹{(viewProductsModalOrder.discountAmount || 0).toLocaleString("en-IN")})
+              {viewProductsModalOrder.shippingAddress && (
+                <div className="pt-2 border-t border-gray-200">
+                  <span className="font-bold text-black">Delivery Address:</span>{" "}
+                  {viewProductsModalOrder.shippingAddress.houseOrBuilding ? `${viewProductsModalOrder.shippingAddress.houseOrBuilding}, ` : ""}
+                  {viewProductsModalOrder.shippingAddress.roadAreaColony ? `${viewProductsModalOrder.shippingAddress.roadAreaColony}, ` : ""}
+                  {viewProductsModalOrder.shippingAddress.streetAddress && !viewProductsModalOrder.shippingAddress.houseOrBuilding ? `${viewProductsModalOrder.shippingAddress.streetAddress}, ` : ""}
+                  {viewProductsModalOrder.shippingAddress.landmark ? `(Near: ${viewProductsModalOrder.shippingAddress.landmark}), ` : ""}
+                  <span className="font-semibold text-black">
+                    {viewProductsModalOrder.shippingAddress.city}, {viewProductsModalOrder.shippingAddress.state} - {viewProductsModalOrder.shippingAddress.postalCode}
                   </span>
-                ) : (
-                  <span className="text-gray-500 font-medium">No Coupon Used</span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Products List */}
