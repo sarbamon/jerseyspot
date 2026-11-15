@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Tag,
   ShieldCheck,
+  XCircle,
 } from "lucide-react";
 import { getProducts, getOrders, getUsers } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
@@ -29,9 +30,11 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [cancelledValue, setCancelledValue] = useState(0);
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
   const [totalProductsCount, setTotalProductsCount] = useState(0);
   const [customersCount, setCustomersCount] = useState(0);
+  const [deliveredOrdersCount, setDeliveredOrdersCount] = useState(0);
   const [aov, setAov] = useState(0);
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -69,57 +72,64 @@ export default function AdminDashboardPage() {
       // 2. Customers
       setCustomersCount(users.length);
 
-      // 3. Orders & Revenue (Filter Paid Orders)
-      const paidOrders = orders.filter((o: any) => o.isPaid);
+      // 3. Orders & Revenue (Exclude Cancelled Orders from Revenue)
       let revenue = 0;
+      let totalCancelledAmount = 0;
       let activeCount = 0;
 
       let pendingCount = 0;
       let shippingCount = 0;
       let deliveredCount = 0;
       let cancelledCount = 0;
+      let validPaidCount = 0;
 
       // Track item sales frequency
       const productSalesMap: { [id: string]: { name: string; image: string; qty: number; revenue: number } } = {};
 
-      paidOrders.forEach((o: any) => {
-        revenue += o.totalPrice || 0;
+      orders.forEach((o: any) => {
         const status = o.deliveryStatus || "Order Received";
         const isDelivered = status === "Delivered" || o.isDelivered;
         const isCancelled = status === "Cancelled" || o.isCancelled;
 
         if (isCancelled) {
           cancelledCount++;
-        } else if (isDelivered) {
-          deliveredCount++;
-        } else if (
-          status === "In Transit" ||
-          status === "Near You" ||
-          status === "Out for Delivery" ||
-          status === "Order Picked Up by Delivery Partner" ||
-          status === "Order Confirmed & Ready to Ship"
-        ) {
-          shippingCount++;
-          activeCount++;
-        } else {
-          pendingCount++;
-          activeCount++;
-        }
+          totalCancelledAmount += o.totalPrice || 0;
+        } else if (o.isPaid) {
+          // Add to revenue ONLY if not cancelled
+          revenue += o.totalPrice || 0;
+          validPaidCount++;
 
-        // Product velocity
-        o.orderItems?.forEach((item: any) => {
-          const pId = item.product?._id || item.product || item.name;
-          if (!productSalesMap[pId]) {
-            productSalesMap[pId] = {
-              name: item.name,
-              image: item.image,
-              qty: 0,
-              revenue: 0,
-            };
+          if (isDelivered) {
+            deliveredCount++;
+          } else if (
+            status === "In Transit" ||
+            status === "Near You" ||
+            status === "Out for Delivery" ||
+            status === "Order Picked Up by Delivery Partner" ||
+            status === "Order Confirmed & Ready to Ship"
+          ) {
+            shippingCount++;
+            activeCount++;
+          } else {
+            pendingCount++;
+            activeCount++;
           }
-          productSalesMap[pId].qty += Number(item.quantity || 1);
-          productSalesMap[pId].revenue += Number(item.price || 0) * Number(item.quantity || 1);
-        });
+
+          // Product sales velocity
+          o.orderItems?.forEach((item: any) => {
+            const pId = item.product?._id || item.product || item.name;
+            if (!productSalesMap[pId]) {
+              productSalesMap[pId] = {
+                name: item.name,
+                image: item.image,
+                qty: 0,
+                revenue: 0,
+              };
+            }
+            productSalesMap[pId].qty += Number(item.quantity || 1);
+            productSalesMap[pId].revenue += Number(item.price || 0) * Number(item.quantity || 1);
+          });
+        }
       });
 
       const topList = Object.values(productSalesMap)
@@ -128,8 +138,10 @@ export default function AdminDashboardPage() {
       setTopProducts(topList);
 
       setTotalRevenue(revenue);
+      setCancelledValue(totalCancelledAmount);
       setActiveOrdersCount(activeCount);
-      setAov(paidOrders.length > 0 ? Math.round(revenue / paidOrders.length) : 0);
+      setDeliveredOrdersCount(deliveredCount);
+      setAov(validPaidCount > 0 ? Math.round(revenue / validPaidCount) : 0);
       setStatusBreakdown({
         pending: pendingCount,
         shipping: shippingCount,
@@ -140,7 +152,7 @@ export default function AdminDashboardPage() {
       // Show recent orders (most recent first)
       setRecentOrders(orders.slice(0, 6));
 
-      // 4. Last 7 Days Daily Revenue Trend
+      // 4. Last 7 Days Daily Revenue Trend (Excluding cancelled orders)
       const days = [];
       const now = new Date();
       for (let i = 6; i >= 0; i--) {
@@ -149,14 +161,18 @@ export default function AdminDashboardPage() {
         const dayStr = d.toLocaleDateString("en-US", { weekday: "short" });
         const dateStr = d.toISOString().split("T")[0];
 
-        const dayRevenue = paidOrders
+        const dayRevenue = orders
           .filter((o: any) => {
+            const isCancelled = o.deliveryStatus === "Cancelled" || o.isCancelled;
+            if (!o.isPaid || isCancelled) return false;
             const orderDate = new Date(o.createdAt).toISOString().split("T")[0];
             return orderDate === dateStr;
           })
           .reduce((sum: number, o: any) => sum + (o.totalPrice || 0), 0);
 
-        const dayOrdersCount = paidOrders.filter((o: any) => {
+        const dayOrdersCount = orders.filter((o: any) => {
+          const isCancelled = o.deliveryStatus === "Cancelled" || o.isCancelled;
+          if (!o.isPaid || isCancelled) return false;
           const orderDate = new Date(o.createdAt).toISOString().split("T")[0];
           return orderDate === dateStr;
         }).length;
@@ -238,13 +254,13 @@ export default function AdminDashboardPage() {
         </div>
       ) : (
         <>
-          {/* 2. PRIMARY KPI STATS GRID */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Total Revenue */}
+          {/* 2. PRIMARY KPI STATS GRID (6 Cards: 3x2 on desktop) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* 1. Total Net Revenue (Excludes Cancelled) */}
             <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold tracking-wider uppercase text-gray-500">Total Revenue</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <span className="text-xs font-bold tracking-wider uppercase text-gray-500">Total Net Revenue</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                   <IndianRupee size={20} />
                 </div>
               </div>
@@ -255,14 +271,54 @@ export default function AdminDashboardPage() {
                 <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
                   <span className="inline-flex items-center font-semibold text-emerald-600">
                     <TrendingUp size={13} className="mr-0.5" />
-                    Verified
+                    Net Sales
                   </span>
-                  <span>from {totalPaidOrders} paid orders</span>
+                  <span>(Excludes cancelled orders)</span>
                 </div>
               </div>
             </div>
 
-            {/* Active Orders */}
+            {/* 2. Cancelled Value */}
+            <div className="relative overflow-hidden rounded-2xl border border-red-200/80 bg-red-50/30 p-5 shadow-sm transition-all hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold tracking-wider uppercase text-red-600">Cancelled Orders</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                  <XCircle size={20} />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl sm:text-3xl font-bold tracking-tight text-red-700">
+                  ₹{cancelledValue.toLocaleString("en-IN")}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-red-600 font-medium">
+                  <span>{statusBreakdown.cancelled} cancelled {statusBreakdown.cancelled === 1 ? "order" : "orders"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Total Orders Delivered */}
+            <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold tracking-wider uppercase text-gray-500">Total Delivered</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                  <CheckCircle2 size={20} />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+                  {deliveredOrdersCount}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+                  <span className="inline-flex items-center font-semibold text-teal-600">
+                    <Truck size={13} className="mr-0.5" />
+                    Fulfilled
+                  </span>
+                  <span>successfully delivered orders</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Active Orders */}
             <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold tracking-wider uppercase text-gray-500">Active Orders</span>
@@ -277,37 +333,18 @@ export default function AdminDashboardPage() {
                 <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
                   <span className="inline-flex items-center font-semibold text-blue-600">
                     <Clock size={13} className="mr-0.5" />
-                    Fulfillment
+                    In Pipeline
                   </span>
-                  <span>{statusBreakdown.pending} pending, {statusBreakdown.shipping} in transit</span>
+                  <span>{statusBreakdown.pending} to ship, {statusBreakdown.shipping} in transit</span>
                 </div>
               </div>
             </div>
 
-            {/* Average Order Value (AOV) */}
+            {/* 5. Total Products */}
             <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold tracking-wider uppercase text-gray-500">Avg. Order Value</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                  <Sparkles size={20} />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-                  ₹{aov.toLocaleString("en-IN")}
-                </div>
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="font-semibold text-purple-600">Basket Size</span>
-                  <span>per successful transaction</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Products & Inventory Health */}
-            <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold tracking-wider uppercase text-gray-500">Products Catalog</span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <span className="text-xs font-bold tracking-wider uppercase text-gray-500">Total Products</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
                   <Package size={20} />
                 </div>
               </div>
@@ -327,7 +364,26 @@ export default function AdminDashboardPage() {
                       Healthy inventory
                     </span>
                   )}
-                  <span className="text-gray-400">• {customersCount} customers</span>
+                  <span className="text-gray-400">• in catalog</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Customers */}
+            <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold tracking-wider uppercase text-gray-500">Customers</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                  <Users size={20} />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+                  {customersCount}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+                  <span className="font-semibold text-purple-600">Registered Accounts</span>
+                  <span>store buyers</span>
                 </div>
               </div>
             </div>
