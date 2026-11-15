@@ -14,6 +14,8 @@ export default function AdminCouponsPage() {
   const [code, setCode] = useState("");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed" | "free_shipping">("percentage");
   const [discountValue, setDiscountValue] = useState("");
+  const [minOrderAmount, setMinOrderAmount] = useState("");
+  const [maxDiscountCap, setMaxDiscountCap] = useState("");
   const [usageLimit, setUsageLimit] = useState("");
   const [isOneTimePerUser, setIsOneTimePerUser] = useState(false);
   const [applyToShipping, setApplyToShipping] = useState(false);
@@ -48,6 +50,8 @@ export default function AdminCouponsPage() {
         usageLimit: usageLimit ? Number(usageLimit) : undefined,
         isOneTimePerUser,
         applyToShipping: discountType === "free_shipping" ? true : applyToShipping,
+        minOrderAmount: minOrderAmount ? Number(minOrderAmount) : 0,
+        maxDiscountCap: maxDiscountCap ? Number(maxDiscountCap) : undefined,
       });
 
       if (data.success) {
@@ -55,6 +59,8 @@ export default function AdminCouponsPage() {
         setIsCreating(false);
         setCode("");
         setDiscountValue("");
+        setMinOrderAmount("");
+        setMaxDiscountCap("");
         setUsageLimit("");
         setIsOneTimePerUser(false);
         setApplyToShipping(false);
@@ -96,9 +102,9 @@ export default function AdminCouponsPage() {
       {isCreating && (
         <div className="mb-8 border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-bold uppercase tracking-wide">Create New Coupon</h2>
-          <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-bold text-gray-600">CODE</label>
+              <label className="mb-1 block text-xs font-bold text-gray-600">CODE *</label>
               <input
                 type="text"
                 value={code}
@@ -109,7 +115,7 @@ export default function AdminCouponsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-bold text-gray-600">TYPE</label>
+              <label className="mb-1 block text-xs font-bold text-gray-600">TYPE *</label>
               <select
                 value={discountType}
                 onChange={(e) => setDiscountType(e.target.value as any)}
@@ -121,7 +127,7 @@ export default function AdminCouponsPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-bold text-gray-600">VALUE</label>
+              <label className="mb-1 block text-xs font-bold text-gray-600">DISCOUNT VALUE *</label>
               <input
                 type="number"
                 value={discountType === "free_shipping" ? "" : discountValue}
@@ -133,16 +139,39 @@ export default function AdminCouponsPage() {
               />
             </div>
             <div>
+              <label className="mb-1 block text-xs font-bold text-gray-600">MIN ORDER AMOUNT (₹)</label>
+              <input
+                type="number"
+                min="0"
+                value={minOrderAmount}
+                onChange={(e) => setMinOrderAmount(e.target.value)}
+                placeholder="e.g. 999 (0 for none)"
+                className="w-full border p-2 text-sm focus:border-black focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-gray-600">MAX DISCOUNT CAP (₹)</label>
+              <input
+                type="number"
+                min="0"
+                value={maxDiscountCap}
+                onChange={(e) => setMaxDiscountCap(e.target.value)}
+                placeholder="e.g. 500 (blank for no cap)"
+                className="w-full border p-2 text-sm focus:border-black focus:outline-none"
+              />
+            </div>
+            <div>
               <label className="mb-1 block text-xs font-bold text-gray-600">USAGE LIMIT (Optional)</label>
               <input
                 type="number"
+                min="1"
                 value={usageLimit}
                 onChange={(e) => setUsageLimit(e.target.value)}
                 placeholder="Leave blank for unlimited"
                 className="w-full border p-2 text-sm focus:border-black focus:outline-none"
               />
             </div>
-            <div className="flex items-center gap-2 mt-6">
+            <div className="flex items-center gap-2 mt-2">
               <input
                 type="checkbox"
                 id="oneTime"
@@ -155,7 +184,7 @@ export default function AdminCouponsPage() {
               </label>
             </div>
             {discountType !== "free_shipping" && (
-              <div className="flex items-center gap-2 mt-6">
+              <div className="flex items-center gap-2 mt-2">
                 <input
                   type="checkbox"
                   id="applyShipping"
@@ -168,7 +197,7 @@ export default function AdminCouponsPage() {
                 </label>
               </div>
             )}
-            <div className="md:col-span-2 lg:col-span-4 mt-2">
+            <div className="md:col-span-2 lg:col-span-3 mt-2">
               <button
                 type="submit"
                 className="bg-black px-6 py-2 text-sm font-bold text-[#f4c84a] transition hover:bg-gray-800"
@@ -209,11 +238,21 @@ export default function AdminCouponsPage() {
                       <span className="font-semibold">
                         {coupon.discountType === "percentage" ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
                       </span>
+                      {coupon.maxDiscountCap ? (
+                        <span className="inline-block rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                          Max Cap: ₹{coupon.maxDiscountCap}
+                        </span>
+                      ) : null}
                       {coupon.applyToShipping && (
                         <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 uppercase tracking-wider">
                           + Covers Delivery
                         </span>
                       )}
+                    </div>
+                  )}
+                  {coupon.minOrderAmount > 0 && (
+                    <div className="text-[11px] text-gray-500 font-medium mt-1">
+                      Min Order: ₹{coupon.minOrderAmount}
                     </div>
                   )}
                 </td>

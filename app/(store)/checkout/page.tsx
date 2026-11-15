@@ -169,26 +169,34 @@ export default function CheckoutPage() {
   let isFreeShipping = false;
 
   if (appliedCoupon) {
-    if (appliedCoupon.discountType === "free_shipping") {
-      isFreeShipping = true;
-      discountAmount = shippingCost;
-    } else if (appliedCoupon.applyToShipping) {
-      // Coupon applies to entire order (subtotal + shipping/delivery charge)
-      const baseTotal = subtotal + shippingCost;
-      if (appliedCoupon.discountType === "percentage") {
-        discountAmount = Math.round((baseTotal * appliedCoupon.discountValue) / 100);
-      } else if (appliedCoupon.discountType === "fixed") {
-        discountAmount = appliedCoupon.discountValue;
-      }
-      if (discountAmount > baseTotal) discountAmount = baseTotal;
+    if (appliedCoupon.minOrderAmount && subtotal < appliedCoupon.minOrderAmount) {
+      discountAmount = 0;
     } else {
-      // Standard coupon (items only)
-      if (appliedCoupon.discountType === "percentage") {
-        discountAmount = Math.round((subtotal * appliedCoupon.discountValue) / 100);
-      } else if (appliedCoupon.discountType === "fixed") {
-        discountAmount = appliedCoupon.discountValue;
+      if (appliedCoupon.discountType === "free_shipping") {
+        isFreeShipping = true;
+        discountAmount = shippingCost;
+      } else if (appliedCoupon.applyToShipping) {
+        // Coupon applies to entire order (subtotal + shipping/delivery charge)
+        const baseTotal = subtotal + shippingCost;
+        if (appliedCoupon.discountType === "percentage") {
+          discountAmount = Math.round((baseTotal * appliedCoupon.discountValue) / 100);
+        } else if (appliedCoupon.discountType === "fixed") {
+          discountAmount = appliedCoupon.discountValue;
+        }
+        if (discountAmount > baseTotal) discountAmount = baseTotal;
+      } else {
+        // Standard coupon (items only)
+        if (appliedCoupon.discountType === "percentage") {
+          discountAmount = Math.round((subtotal * appliedCoupon.discountValue) / 100);
+        } else if (appliedCoupon.discountType === "fixed") {
+          discountAmount = appliedCoupon.discountValue;
+        }
+        if (discountAmount > subtotal) discountAmount = subtotal;
       }
-      if (discountAmount > subtotal) discountAmount = subtotal;
+
+      if (appliedCoupon.maxDiscountCap && discountAmount > appliedCoupon.maxDiscountCap) {
+        discountAmount = appliedCoupon.maxDiscountCap;
+      }
     }
   }
   
@@ -205,8 +213,13 @@ export default function CheckoutPage() {
     setCouponError("");
     setCouponSuccess("");
     try {
-      const data = await validateCoupon(couponCode);
+      const data = await validateCoupon(couponCode, subtotal);
       if (data.success) {
+        if (data.coupon.minOrderAmount && subtotal < data.coupon.minOrderAmount) {
+          setCouponError(`Minimum order amount of ₹${data.coupon.minOrderAmount} required for coupon ${data.coupon.code}`);
+          setAppliedCoupon(null);
+          return;
+        }
         setAppliedCoupon(data.coupon);
         setCouponSuccess(`${data.coupon.code} applied!`);
       } else {
@@ -796,6 +809,11 @@ export default function CheckoutPage() {
                 </div>
                 {couponError && <p className="mt-2 text-xs font-bold text-red-500">{couponError}</p>}
                 {couponSuccess && <p className="mt-2 text-xs font-bold text-green-600">{couponSuccess}</p>}
+                {appliedCoupon && appliedCoupon.minOrderAmount > 0 && subtotal < appliedCoupon.minOrderAmount && (
+                  <p className="mt-2 text-xs font-semibold text-amber-600">
+                    * Subtotal must be at least ₹{appliedCoupon.minOrderAmount} for this coupon.
+                  </p>
+                )}
               </div>
 
               <div className="mt-6 space-y-3 border-t border-gray-200 pt-6 text-sm">
@@ -803,9 +821,14 @@ export default function CheckoutPage() {
                   <span className="text-gray-600">Subtotal</span>
                   <span>₹{subtotal.toLocaleString("en-IN")}</span>
                 </div>
-                {appliedCoupon && (
+                {appliedCoupon && discountAmount > 0 && (
                   <div className="flex justify-between text-green-600 font-bold">
-                    <span>Discount ({appliedCoupon.code})</span>
+                    <span>
+                      Discount ({appliedCoupon.code})
+                      {appliedCoupon.maxDiscountCap && appliedCoupon.discountType === "percentage" && discountAmount >= appliedCoupon.maxDiscountCap && (
+                        <span className="ml-1 text-[11px] font-normal text-gray-500">(Capped at ₹{appliedCoupon.maxDiscountCap})</span>
+                      )}
+                    </span>
                     <span>-₹{discountAmount.toLocaleString("en-IN")}</span>
                   </div>
                 )}

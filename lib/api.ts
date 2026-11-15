@@ -804,6 +804,8 @@ export async function createCoupon(couponData: {
   usageLimit?: number;
   isOneTimePerUser?: boolean;
   applyToShipping?: boolean;
+  minOrderAmount?: number;
+  maxDiscountCap?: number;
 }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
   const response = await fetch(`${API_URL}/coupons`, {
@@ -917,9 +919,10 @@ export async function deleteCoupon(id: string) {
   return response.json();
 }
 
-export async function validateCoupon(code: string) {
+export async function validateCoupon(code: string, subtotal?: number) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-token') : null;
-  const response = await fetch(`${API_URL}/coupons/validate/${code}`, {
+  const query = subtotal !== undefined ? `?subtotal=${encodeURIComponent(subtotal)}` : '';
+  const response = await fetch(`${API_URL}/coupons/validate/${encodeURIComponent(code)}${query}`, {
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
