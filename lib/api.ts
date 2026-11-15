@@ -346,6 +346,24 @@ export async function verifyPayment(paymentData: any) {
   return response.json();
 }
 
+export async function verifyOrderStatus(orderId: string) {
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('jerseyspot-token') || localStorage.getItem('jerseyspot-admin-token')) : null;
+  const response = await fetch(`${API_URL}/orders/${orderId}/verify-status`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to verify order status");
+  }
+
+  return response.json();
+}
+
 // ----------------------------------------------------
 // NEW ADDITIONS
 // ----------------------------------------------------

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getMyOrderById, getAds } from "@/lib/api";
+import { getMyOrderById, getAds, verifyOrderStatus } from "@/lib/api";
 import Link from "next/link";
 import { useStore } from "@/components/StoreProvider";
 import { useParams, useRouter } from "next/navigation";
@@ -17,6 +17,8 @@ export default function OrderDetailsPage() {
   const [trackingData, setTrackingData] = useState<any>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [openDelivery, setOpenDelivery] = useState(false);
   const [openPrice, setOpenPrice] = useState(false);
@@ -106,6 +108,24 @@ export default function OrderDetailsPage() {
     }
   };
 
+  const handleVerifyPayment = async () => {
+    try {
+      setVerifyingPayment(true);
+      setVerifyMessage(null);
+      const res = await verifyOrderStatus(order._id);
+      if (res.success && res.isPaid) {
+        setOrder(res.order);
+        setVerifyMessage("Payment verified! Your order is confirmed.");
+      } else {
+        setVerifyMessage(res.message || "No captured payment found on Razorpay.");
+      }
+    } catch (err: any) {
+      setVerifyMessage(err.message || "Failed to verify status");
+    } finally {
+      setVerifyingPayment(false);
+    }
+  };
+
   if (loading) {
     return (
       <main className="flex min-h-[70vh] items-center justify-center bg-gray-50 text-black">
@@ -183,10 +203,25 @@ export default function OrderDetailsPage() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-sm text-red-900">Payment Failed / Pending</h3>
+                <h3 className="font-bold text-sm text-red-900">Payment Pending / Unconfirmed</h3>
                 <p className="text-xs text-red-700 mt-1">
-                  Payment for this order was not completed.
+                  Payment for this order was not confirmed by the browser. If money was debited from your bank or UPI account, click below to verify directly with Razorpay.
                 </p>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handleVerifyPayment}
+                    disabled={verifyingPayment}
+                    className="inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-xs font-bold text-[#f4c84a] shadow-sm hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {verifyingPayment ? "Checking with Razorpay..." : "Verify Payment Status"}
+                  </button>
+                  {verifyMessage && (
+                    <p className="mt-2 text-xs font-semibold text-amber-900">
+                      {verifyMessage}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

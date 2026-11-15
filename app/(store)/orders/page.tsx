@@ -1,19 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getMyOrders, getAds } from "@/lib/api";
+import { getMyOrders, getAds, verifyOrderStatus } from "@/lib/api";
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { useStore } from "@/components/StoreProvider";
 
 export default function MyOrdersPage() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [adsList, setAdsList] = useState<any[]>([]);
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [verifyMessage, setVerifyMessage] = useState<{ id: string; text: string; success: boolean } | null>(null);
   const { isInitialized, isAuthenticated, showLoginModal } = useStore();
 
   useEffect(() => {
@@ -54,6 +56,26 @@ export default function MyOrdersPage() {
       setError(err.message || "Failed to load orders");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyPayment = async (orderId: string) => {
+    try {
+      setVerifyingId(orderId);
+      setVerifyMessage(null);
+      const res = await verifyOrderStatus(orderId);
+      if (res.success && res.isPaid) {
+        setOrders((prev: any[]) =>
+          prev.map((o) => (o._id === orderId ? res.order : o))
+        );
+        setVerifyMessage({ id: orderId, text: "Payment verified! Order is confirmed.", success: true });
+      } else {
+        setVerifyMessage({ id: orderId, text: res.message || "No captured payment found on Razorpay.", success: false });
+      }
+    } catch (err: any) {
+      setVerifyMessage({ id: orderId, text: err.message || "Verification failed", success: false });
+    } finally {
+      setVerifyingId(null);
     }
   };
 
@@ -256,6 +278,27 @@ export default function MyOrdersPage() {
                         <span className="text-[10px] text-red-600 font-medium line-clamp-1">
                           Reason: {order.cancelReason}
                         </span>
+                      )}
+                      {isPaymentFailed && (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleVerifyPayment(order._id);
+                            }}
+                            disabled={verifyingId === order._id}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-black px-2.5 py-1 text-[11px] font-bold text-[#f4c84a] shadow-sm hover:bg-gray-800 disabled:opacity-50"
+                          >
+                            {verifyingId === order._id ? "Checking Razorpay..." : "Check Payment Status"}
+                          </button>
+                          {verifyMessage && verifyMessage.id === order._id && (
+                            <p className={`mt-1 text-[11px] font-semibold ${verifyMessage.success ? 'text-green-600' : 'text-amber-700'}`}>
+                              {verifyMessage.text}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
-import { getRazorpayKey, placeOrder, verifyPayment, validateCoupon, getSiteConfig, checkPincode, getAds, updateUserProfile } from "@/lib/api";
+import { getRazorpayKey, placeOrder, verifyPayment, verifyOrderStatus, validateCoupon, getSiteConfig, checkPincode, getAds, updateUserProfile } from "@/lib/api";
 
 export default function CheckoutPage() {
   const { cart, isInitialized, isAuthenticated, showLoginModal, clearCart, user, updateUser, updateQuantity, removeFromCart } = useStore();
@@ -335,6 +335,22 @@ export default function CheckoutPage() {
         },
         theme: {
           color: "#000000",
+        },
+        modal: {
+          ondismiss: async function () {
+            // User closed / cut the window or popup: check if payment was completed in background
+            try {
+              const checkData = await verifyOrderStatus(order._id);
+              if (checkData.success && checkData.isPaid) {
+                setSuccess(true);
+                clearCart();
+                return;
+              }
+            } catch (err) {
+              console.warn("Verify order on dismiss note:", err);
+            }
+            setLoading(false);
+          },
         },
       };
 
