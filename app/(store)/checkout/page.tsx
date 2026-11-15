@@ -166,17 +166,33 @@ export default function CheckoutPage() {
   const shippingCost = subtotal > 0 ? Math.min(deliveryCharge * totalItemsCount, 700) : 0;
   
   let discountAmount = 0;
+  let isFreeShipping = false;
+
   if (appliedCoupon) {
-    if (appliedCoupon.discountType === "percentage") {
-      discountAmount = (subtotal * appliedCoupon.discountValue) / 100;
-    } else if (appliedCoupon.discountType === "fixed") {
-      discountAmount = appliedCoupon.discountValue;
+    if (appliedCoupon.discountType === "free_shipping") {
+      isFreeShipping = true;
+      discountAmount = shippingCost;
+    } else if (appliedCoupon.applyToShipping) {
+      // Coupon applies to entire order (subtotal + shipping/delivery charge)
+      const baseTotal = subtotal + shippingCost;
+      if (appliedCoupon.discountType === "percentage") {
+        discountAmount = Math.round((baseTotal * appliedCoupon.discountValue) / 100);
+      } else if (appliedCoupon.discountType === "fixed") {
+        discountAmount = appliedCoupon.discountValue;
+      }
+      if (discountAmount > baseTotal) discountAmount = baseTotal;
+    } else {
+      // Standard coupon (items only)
+      if (appliedCoupon.discountType === "percentage") {
+        discountAmount = Math.round((subtotal * appliedCoupon.discountValue) / 100);
+      } else if (appliedCoupon.discountType === "fixed") {
+        discountAmount = appliedCoupon.discountValue;
+      }
+      if (discountAmount > subtotal) discountAmount = subtotal;
     }
-    // Prevent negative total
-    if (discountAmount > subtotal) discountAmount = subtotal;
   }
   
-  const total = subtotal - discountAmount + shippingCost;
+  const total = Math.max(0, subtotal + shippingCost - discountAmount);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -795,7 +811,14 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
-                  <span>₹{shippingCost.toLocaleString("en-IN")}</span>
+                  {isFreeShipping ? (
+                    <span className="font-bold text-green-600">
+                      <span className="line-through text-gray-400 mr-1.5 font-normal">₹{shippingCost.toLocaleString("en-IN")}</span>
+                      FREE
+                    </span>
+                  ) : (
+                    <span>₹{shippingCost.toLocaleString("en-IN")}</span>
+                  )}
                 </div>
                 <div className="flex justify-between border-t border-gray-200 pt-3 text-lg font-bold">
                   <span>Total</span>

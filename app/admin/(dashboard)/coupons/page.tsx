@@ -12,10 +12,11 @@ export default function AdminCouponsPage() {
 
   // Form State
   const [code, setCode] = useState("");
-  const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [discountType, setDiscountType] = useState<"percentage" | "fixed" | "free_shipping">("percentage");
   const [discountValue, setDiscountValue] = useState("");
   const [usageLimit, setUsageLimit] = useState("");
   const [isOneTimePerUser, setIsOneTimePerUser] = useState(false);
+  const [applyToShipping, setApplyToShipping] = useState(false);
 
   useEffect(() => {
     fetchCoupons();
@@ -36,15 +37,17 @@ export default function AdminCouponsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code || !discountValue) return;
+    if (!code) return;
+    if (discountType !== "free_shipping" && !discountValue) return;
 
     try {
       const data = await createCoupon({
         code,
         discountType,
-        discountValue: Number(discountValue),
+        discountValue: discountType === "free_shipping" ? 0 : Number(discountValue),
         usageLimit: usageLimit ? Number(usageLimit) : undefined,
         isOneTimePerUser,
+        applyToShipping: discountType === "free_shipping" ? true : applyToShipping,
       });
 
       if (data.success) {
@@ -54,6 +57,8 @@ export default function AdminCouponsPage() {
         setDiscountValue("");
         setUsageLimit("");
         setIsOneTimePerUser(false);
+        setApplyToShipping(false);
+        setDiscountType("percentage");
       } else {
         alert(data.message);
       }
@@ -107,22 +112,24 @@ export default function AdminCouponsPage() {
               <label className="mb-1 block text-xs font-bold text-gray-600">TYPE</label>
               <select
                 value={discountType}
-                onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}
+                onChange={(e) => setDiscountType(e.target.value as any)}
                 className="w-full border p-2 text-sm focus:border-black focus:outline-none"
               >
                 <option value="percentage">Percentage (%)</option>
                 <option value="fixed">Fixed Amount (₹)</option>
+                <option value="free_shipping">Free Delivery (100% off shipping)</option>
               </select>
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-gray-600">VALUE</label>
               <input
                 type="number"
-                value={discountValue}
+                value={discountType === "free_shipping" ? "" : discountValue}
                 onChange={(e) => setDiscountValue(e.target.value)}
-                placeholder="e.g. 20"
-                className="w-full border p-2 text-sm focus:border-black focus:outline-none"
-                required
+                placeholder={discountType === "free_shipping" ? "Free Delivery (Auto)" : "e.g. 20"}
+                disabled={discountType === "free_shipping"}
+                className="w-full border p-2 text-sm focus:border-black focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                required={discountType !== "free_shipping"}
               />
             </div>
             <div>
@@ -141,12 +148,26 @@ export default function AdminCouponsPage() {
                 id="oneTime"
                 checked={isOneTimePerUser}
                 onChange={(e) => setIsOneTimePerUser(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
               />
               <label htmlFor="oneTime" className="text-xs font-bold text-gray-600 uppercase tracking-wide cursor-pointer">
                 1 TIME USE PER USER
               </label>
             </div>
+            {discountType !== "free_shipping" && (
+              <div className="flex items-center gap-2 mt-6">
+                <input
+                  type="checkbox"
+                  id="applyShipping"
+                  checked={applyToShipping}
+                  onChange={(e) => setApplyToShipping(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                />
+                <label htmlFor="applyShipping" className="text-xs font-bold text-gray-600 uppercase tracking-wide cursor-pointer">
+                  COVERS SHIPPING CHARGE TOO
+                </label>
+              </div>
+            )}
             <div className="md:col-span-2 lg:col-span-4 mt-2">
               <button
                 type="submit"
@@ -179,7 +200,22 @@ export default function AdminCouponsPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  {coupon.discountType === "percentage" ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
+                  {coupon.discountType === "free_shipping" ? (
+                    <span className="inline-block rounded bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800 uppercase tracking-wider">
+                      Free Delivery
+                    </span>
+                  ) : (
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="font-semibold">
+                        {coupon.discountType === "percentage" ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
+                      </span>
+                      {coupon.applyToShipping && (
+                        <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 uppercase tracking-wider">
+                          + Covers Delivery
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <div>{coupon.usedCount} / {coupon.usageLimit || "∞"}</div>

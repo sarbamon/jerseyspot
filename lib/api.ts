@@ -799,10 +799,11 @@ export async function getCoupons() {
 
 export async function createCoupon(couponData: {
   code: string;
-  discountType: "percentage" | "fixed";
+  discountType: "percentage" | "fixed" | "free_shipping";
   discountValue: number;
   usageLimit?: number;
   isOneTimePerUser?: boolean;
+  applyToShipping?: boolean;
 }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
   const response = await fetch(`${API_URL}/coupons`, {
