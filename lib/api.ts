@@ -922,6 +922,26 @@ export async function bulkUpdateProducts(updates: any[]) {
   return response.json();
 }
 
+export async function reorderProducts(orderedIds: string[]) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
+
+  const response = await fetch(`${API_URL}/products/reorder`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ orderedIds }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to reorder products");
+  }
+
+  return response.json();
+}
+
 export async function deleteCoupon(id: string) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jerseyspot-admin-token') : null;
   const response = await fetch(`${API_URL}/coupons/${id}`, {

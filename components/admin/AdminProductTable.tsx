@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Edit, Trash, Tag, Check, RefreshCw, Pencil, X, Save, Camera, Upload } from "lucide-react";
+import { Edit, Trash, Tag, Check, RefreshCw, Pencil, X, Save, Camera, Upload, GripVertical, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DeleteProductButton from "./DeleteProductButton";
 import RestoreProductButton from "./RestoreProductButton";
-import { bulkDeleteProducts, bulkUpdateStock, bulkUpdateCategory, bulkUpdateProducts, uploadImages } from "@/lib/api";
+import { bulkDeleteProducts, bulkUpdateStock, bulkUpdateCategory, bulkUpdateProducts, uploadImages, reorderProducts } from "@/lib/api";
 
 function formatSizesToString(sizes: any[]): string {
   if (!sizes || !Array.isArray(sizes) || sizes.length === 0) return "";
@@ -41,6 +41,13 @@ export default function AdminProductTable({
   const [localProducts, setLocalProducts] = useState<any[]>(products);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
+  // Re-arrange / Drag & Drop Mode
+  const [isReorderMode, setIsReorderMode] = useState<boolean>(false);
+  const [isSavingOrder, setIsSavingOrder] = useState<boolean>(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [hasReordered, setHasReordered] = useState<boolean>(false);
+
   // Bulk Edit Mode (Only active when user clicks "BULK EDIT")
   const [isBulkEditMode, setIsBulkEditMode] = useState<boolean>(false);
   const [edits, setEdits] = useState<{
@@ -130,12 +137,95 @@ export default function AdminProductTable({
     stockFilter !== "all" ||
     searchFilter !== "";
 
+  // Products to display in table (when reorder mode is active, display in direct local order)
+  const displayProducts = isReorderMode ? localProducts : filteredProducts;
+
   const resetFilters = () => {
     setSelectedCategory("all");
     setPriceSort("default");
     setMaxPrice("");
     setStockFilter("all");
     setSearchFilter("");
+  };
+
+  // Drag-and-drop reorder handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", `${index}`);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const items = [...localProducts];
+    const [movedItem] = items.splice(draggedIndex, 1);
+    items.splice(dropIndex, 0, movedItem);
+    setLocalProducts(items);
+    setHasReordered(true);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const moveItem = (fromIndex: number, direction: "up" | "down") => {
+    const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+    if (toIndex < 0 || toIndex >= localProducts.length) return;
+    const items = [...localProducts];
+    const [movedItem] = items.splice(fromIndex, 1);
+    items.splice(toIndex, 0, movedItem);
+    setLocalProducts(items);
+    setHasReordered(true);
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSavingOrder(true);
+    try {
+      const orderedIds = localProducts.map((p) => p._id);
+      await reorderProducts(orderedIds);
+      setHasReordered(false);
+      setStatusMessage({
+        text: "Product display order saved successfully!",
+        type: "success",
+      });
+      router.refresh();
+    } catch (err: any) {
+      console.error("Failed to save order:", err);
+      setStatusMessage({
+        text: err.message || "Failed to save product order",
+        type: "error",
+      });
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleToggleReorderMode = () => {
+    if (!isReorderMode) {
+      resetFilters();
+      setIsBulkEditMode(false);
+      setIsReorderMode(true);
+    } else {
+      setIsReorderMode(false);
+      setHasReordered(false);
+      setLocalProducts(products);
+    }
   };
 
   const toggleSelectAll = () => {
@@ -485,42 +575,84 @@ export default function AdminProductTable({
             )}
           </div>
 
-          {/* Right: Bulk Edit Toggle Button */}
+          {/* Right: Actions (Re-Arrange & Bulk Edit) */}
           {!isDeletedTab && (
-            <div>
-              {!isBulkEditMode ? (
-                <button
-                  type="button"
-                  onClick={() => setIsBulkEditMode(true)}
-                  className="flex items-center gap-2 rounded border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-800"
-                >
-                  <Pencil size={14} />
-                  BULK EDIT
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {!isBulkEditMode && (
+                !isReorderMode ? (
                   <button
                     type="button"
-                    onClick={handleSaveBulkEdits}
-                    disabled={isSaving}
-                    className="flex items-center gap-1.5 rounded border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-800 disabled:opacity-50"
+                    onClick={handleToggleReorderMode}
+                    className="flex items-center gap-2 rounded border border-gray-300 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-gray-800 transition-colors hover:bg-gray-100 hover:border-black shadow-sm"
                   >
-                    <Save size={14} />
-                    {isSaving
-                      ? uploadingPhotos
-                        ? "UPLOADING PHOTOS..."
-                        : "SAVING..."
-                      : `SAVE CHANGES ${editedCount > 0 ? `(${editedCount})` : ""}`}
+                    <ArrowUpDown size={14} />
+                    RE-ARRANGE
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelBulkEdit}
-                    disabled={isSaving}
-                    className="flex items-center gap-1.5 rounded border border-gray-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <X size={14} />
-                    CANCEL
-                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveOrder}
+                      disabled={isSavingOrder || !hasReordered}
+                      className="flex items-center gap-1.5 rounded border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-800 disabled:opacity-50 shadow-sm"
+                    >
+                      <Save size={14} />
+                      {isSavingOrder
+                        ? "SAVING..."
+                        : hasReordered
+                        ? "SAVE ORDER *"
+                        : "ORDER SAVED"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleReorderMode}
+                      disabled={isSavingOrder}
+                      className="flex items-center gap-1.5 rounded border border-gray-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <X size={14} />
+                      DONE
+                    </button>
+                  </div>
+                )
+              )}
+
+              {!isReorderMode && (
+                <div>
+                  {!isBulkEditMode ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsBulkEditMode(true)}
+                      className="flex items-center gap-2 rounded border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-800"
+                    >
+                      <Pencil size={14} />
+                      BULK EDIT
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveBulkEdits}
+                        disabled={isSaving}
+                        className="flex items-center gap-1.5 rounded border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#f4c84a] transition-colors hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        <Save size={14} />
+                        {isSaving
+                          ? uploadingPhotos
+                            ? "UPLOADING PHOTOS..."
+                            : "SAVING..."
+                          : `SAVE CHANGES ${editedCount > 0 ? `(${editedCount})` : ""}`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelBulkEdit}
+                        disabled={isSaving}
+                        className="flex items-center gap-1.5 rounded border border-gray-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <X size={14} />
+                        CANCEL
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -530,9 +662,14 @@ export default function AdminProductTable({
         {/* Filter Summary */}
         <div className="mt-3 flex items-center justify-between text-xs text-gray-500 font-medium">
           <span>
-            Showing <strong className="text-black">{filteredProducts.length}</strong> of{" "}
+            Showing <strong className="text-black">{displayProducts.length}</strong> of{" "}
             <strong className="text-black">{localProducts.length}</strong> products
           </span>
+          {isReorderMode && (
+            <span className="rounded bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-black uppercase tracking-wider animate-pulse">
+              RE-ARRANGE MODE ACTIVE — Drag products using handles (⋮⋮) or arrows to re-order
+            </span>
+          )}
           {isBulkEditMode && (
             <span className="rounded bg-black px-2.5 py-1 text-[11px] font-bold text-[#f4c84a] uppercase tracking-wider">
               {selectedIds.length === 0
@@ -542,6 +679,23 @@ export default function AdminProductTable({
           )}
         </div>
       </div>
+
+      {/* Re-arrange Guide Bar */}
+      {isReorderMode && (
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-50 border-b border-amber-200 px-6 py-3 text-xs text-amber-900">
+          <div className="flex items-center gap-2 font-semibold">
+            <ArrowUpDown size={15} className="text-amber-700 shrink-0" />
+            <span>
+              Drag & drop rows using the <strong>grip handle (⋮⋮)</strong> or use <strong>↑ / ↓</strong> buttons. Click <strong>SAVE ORDER</strong> when finished to update the storefront catalog.
+            </span>
+          </div>
+          {hasReordered && (
+            <span className="font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded border border-amber-300 uppercase text-[11px]">
+              * Unsaved Changes
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Bulk Edit Batch Action Bar (Appears when Bulk Edit Mode is ON) */}
       {isBulkEditMode && (
@@ -669,13 +823,18 @@ export default function AdminProductTable({
         <table className="w-full text-left text-sm text-gray-600">
           <thead className="bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-500">
             <tr>
-              {!isDeletedTab && (
+              {isReorderMode && (
+                <th className="px-3 py-4 w-28 text-center text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50">
+                  Order
+                </th>
+              )}
+              {!isDeletedTab && !isReorderMode && (
                 <th className="px-6 py-4 w-12">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                     checked={
-                      selectedIds.length > 0 && selectedIds.length === filteredProducts.length
+                      selectedIds.length > 0 && selectedIds.length === displayProducts.length
                     }
                     onChange={toggleSelectAll}
                   />
@@ -691,7 +850,7 @@ export default function AdminProductTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredProducts.length === 0 ? (
+            {displayProducts.length === 0 ? (
               <tr>
                 <td
                   colSpan={isDeletedTab ? 5 : 6}
@@ -701,7 +860,7 @@ export default function AdminProductTable({
                 </td>
               </tr>
             ) : (
-              filteredProducts.map((product: any) => {
+              displayProducts.map((product: any, index: number) => {
                 const isRowSelected = selectedIds.includes(product._id);
                 const isRowEditable = isBulkEditMode && isRowSelected;
                 const isRowEdited = !!edits[product._id];
@@ -721,15 +880,68 @@ export default function AdminProductTable({
                 return (
                   <tr
                     key={product._id}
+                    draggable={isReorderMode}
+                    onDragStart={(e) => isReorderMode && handleDragStart(e, index)}
+                    onDragOver={(e) => isReorderMode && handleDragOver(e, index)}
+                    onDrop={(e) => isReorderMode && handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
                     className={`transition-colors ${
-                      isRowEdited
+                      isReorderMode ? "cursor-move" : ""
+                    } ${
+                      isReorderMode && draggedIndex === index
+                        ? "opacity-30 bg-amber-100/50"
+                        : isReorderMode && dragOverIndex === index
+                        ? "border-t-4 border-t-amber-500 bg-amber-50/70"
+                        : isRowEdited
                         ? "bg-gray-50 border-l-2 border-l-black"
                         : selectedIds.includes(product._id)
                         ? "bg-gray-50"
                         : "hover:bg-gray-50/80"
                     }`}
                   >
-                    {!isDeletedTab && (
+                    {isReorderMode && (
+                      <td className="px-3 py-4 text-center bg-amber-50/40 border-r border-amber-100">
+                        <div className="flex items-center justify-center gap-1.5 select-none">
+                          <div
+                            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-black p-1 rounded hover:bg-amber-100 transition-colors"
+                            title="Drag to reorder"
+                          >
+                            <GripVertical size={18} />
+                          </div>
+                          <span className="font-mono text-xs font-bold text-gray-800 bg-white border border-gray-300 px-1.5 py-0.5 rounded shadow-xs">
+                            #{index + 1}
+                          </span>
+                          <div className="flex flex-col">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveItem(index, "up");
+                              }}
+                              className="text-gray-400 hover:text-black disabled:opacity-20 p-0.5 transition-colors cursor-pointer"
+                              title="Move up"
+                            >
+                              <ChevronUp size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === displayProducts.length - 1}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveItem(index, "down");
+                              }}
+                              className="text-gray-400 hover:text-black disabled:opacity-20 p-0.5 transition-colors cursor-pointer"
+                              title="Move down"
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    )}
+
+                    {!isDeletedTab && !isReorderMode && (
                       <td className="px-6 py-4">
                         <input
                           type="checkbox"
