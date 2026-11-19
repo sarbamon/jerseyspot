@@ -34,10 +34,10 @@ export default async function StoreLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white">
+    <div className="flex min-h-screen flex-col bg-black text-white w-full max-w-full overflow-x-hidden">
       <StoreProvider>
         <Header categories={categories} />
-        <div className="flex-1">{children}</div>
+        <div className="flex-1 w-full max-w-full min-w-0 overflow-x-hidden">{children}</div>
         <LoginModal />
         <SetPasswordModal />
         <Footer categories={categories} />

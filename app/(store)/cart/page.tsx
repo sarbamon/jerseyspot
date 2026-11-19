@@ -46,18 +46,18 @@ export default function CartPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white px-5 py-12 text-black sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-6xl">
+    <main className="min-h-screen bg-white px-3.5 py-8 text-black sm:px-8 sm:py-12 lg:px-12 w-full max-w-full box-border overflow-x-hidden">
+      <div className="mx-auto w-full max-w-6xl min-w-0">
 
-        <h1 className="font-serif text-4xl font-bold">
+        <h1 className="font-serif text-3xl sm:text-4xl font-bold">
           Your Cart
         </h1>
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_350px]">
+        <div className="mt-8 sm:mt-10 grid gap-8 sm:gap-10 lg:grid-cols-[minmax(0,1fr)_350px] w-full min-w-0 max-w-full">
 
           {/* ITEMS */}
 
-          <div className="space-y-6">
+          <div className="space-y-6 w-full min-w-0 max-w-full">
             {cart.map((item) => (
               <div
                 key={`${item._id}-${item.size}`}
