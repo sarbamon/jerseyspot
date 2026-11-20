@@ -506,16 +506,16 @@ export default function CheckoutPage() {
   return (
     <>
     <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-    <main className="min-h-screen bg-white px-3 sm:px-8 py-6 sm:py-12 lg:px-12 w-full max-w-full box-border overflow-x-hidden">
+    <main className="min-h-screen bg-white text-black px-3 sm:px-8 py-6 sm:py-12 lg:px-12 w-full max-w-full box-border overflow-x-hidden">
       <div className="mx-auto w-full max-w-6xl min-w-0">
-        <h1 className="mb-6 sm:mb-10 font-serif text-2xl sm:text-3xl font-bold uppercase tracking-wider">
+        <h1 className="mb-6 sm:mb-10 font-serif text-2xl sm:text-3xl font-bold uppercase tracking-wider text-black">
           Checkout
         </h1>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-12 w-full min-w-0 max-w-full">
           {/* SHIPPING FORM */}
           <div className="rounded-2xl border border-gray-200 bg-white p-3.5 sm:p-8 shadow-sm w-full min-w-0 max-w-full overflow-hidden box-border">
-            <h2 className="mb-6 font-serif text-xl sm:text-2xl font-bold border-b pb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="mb-6 font-serif text-xl sm:text-2xl font-bold border-b pb-3 flex flex-wrap items-center justify-between gap-2 text-black">
               <span>Shipping Information</span>
               {savedAddresses.length > 0 && selectedAddressIndex !== "new" && (
                 <button
@@ -744,12 +744,12 @@ export default function CheckoutPage() {
 
           {/* ORDER SUMMARY */}
           <div className="w-full min-w-0 max-w-full">
-            <div className="sticky top-24 rounded-2xl border border-gray-200 bg-gray-50/80 p-3.5 sm:p-6 shadow-sm backdrop-blur-sm w-full min-w-0 max-w-full overflow-hidden box-border">
-              <h2 className="mb-4 sm:mb-6 font-serif text-lg sm:text-xl font-bold border-b border-gray-200 pb-3">Order Summary</h2>
+            <div className="sticky top-24 rounded-2xl border border-gray-200 bg-gray-50/80 p-3.5 sm:p-6 shadow-sm backdrop-blur-sm w-full min-w-0 max-w-full overflow-hidden box-border text-black">
+              <h2 className="mb-4 sm:mb-6 font-serif text-lg sm:text-xl font-bold border-b border-gray-200 pb-3 text-black">Order Summary</h2>
               
               <div className="space-y-3 max-h-[42vh] overflow-y-auto overflow-x-hidden pr-1">
                 {cart.map((item) => (
-                  <div key={`${item._id}-${item.size}`} className="flex gap-2.5 items-center border border-gray-200/80 bg-white p-2.5 sm:p-3 rounded-xl shadow-xs transition hover:border-gray-300 w-full min-w-0 overflow-hidden box-border">
+                  <div key={`${item._id}-${item.size}`} className="flex gap-2.5 items-center border border-gray-200/80 bg-white p-2.5 sm:p-3 rounded-xl shadow-xs transition hover:border-gray-300 w-full min-w-0 overflow-hidden box-border text-black">
                     <div className="relative h-14 w-12 sm:h-16 sm:w-14 shrink-0 overflow-hidden rounded-lg bg-gray-50 border border-gray-100">
                       <Image src={item.image} alt={item.name} fill sizes="60px" className="object-cover" />
                     </div>
@@ -802,7 +802,7 @@ export default function CheckoutPage() {
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                     disabled={!!appliedCoupon}
                     placeholder="Enter code"
-                    className="w-full min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm focus:border-black focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                    className="w-full min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm text-black focus:border-black focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
                   />
                   {appliedCoupon ? (
                     <button
@@ -832,23 +832,23 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              <div className="mt-6 space-y-3 border-t border-gray-200 pt-6 text-sm">
-                <div className="flex justify-between">
+              <div className="mt-6 space-y-3 border-t border-gray-200 pt-6 text-sm text-black">
+                <div className="flex justify-between items-center text-black">
                   <span className="text-gray-600">Subtotal</span>
-                  <span>₹{subtotal.toLocaleString("en-IN")}</span>
+                  <span className="font-semibold text-black">₹{subtotal.toLocaleString("en-IN")}</span>
                 </div>
                 {appliedCoupon && discountAmount > 0 && (
-                  <div className="flex justify-between text-green-600 font-bold">
+                  <div className="flex justify-between items-center text-green-600 font-bold">
                     <span>
                       Discount ({appliedCoupon.code})
                       {appliedCoupon.maxDiscountCap && appliedCoupon.discountType === "percentage" && discountAmount >= appliedCoupon.maxDiscountCap && (
                         <span className="ml-1 text-[11px] font-normal text-gray-500">(Capped at ₹{appliedCoupon.maxDiscountCap})</span>
                       )}
                     </span>
-                    <span>-₹{discountAmount.toLocaleString("en-IN")}</span>
+                    <span className="text-green-600">-₹{discountAmount.toLocaleString("en-IN")}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center text-black">
                   <span className="text-gray-600">Shipping</span>
                   {isFreeShipping ? (
                     <span className="font-bold text-green-600">
@@ -856,12 +856,12 @@ export default function CheckoutPage() {
                       FREE
                     </span>
                   ) : (
-                    <span>₹{shippingCost.toLocaleString("en-IN")}</span>
+                    <span className="font-semibold text-black">₹{shippingCost.toLocaleString("en-IN")}</span>
                   )}
                 </div>
-                <div className="flex justify-between border-t border-gray-200 pt-3 text-lg font-bold">
-                  <span>Total</span>
-                  <span>₹{total.toLocaleString("en-IN")}</span>
+                <div className="flex justify-between items-center border-t border-gray-200 pt-3 text-lg font-bold text-black">
+                  <span className="text-black">Total</span>
+                  <span className="text-black">₹{total.toLocaleString("en-IN")}</span>
                 </div>
               </div>
 
